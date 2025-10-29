@@ -183,7 +183,7 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
                         {link}
                       </a>
                       <button
-                        onClick={(): void => copyToClipboard(link, `img-${idx}`)}
+                        onClick={(): void => { void copyToClipboard(link, `img-${idx}`); }}
                         className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200"
                         title="Copy"
                       >
@@ -216,7 +216,7 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
                         {link}
                       </a>
                       <button
-                        onClick={(): void => copyToClipboard(link, `vid-${idx}`)}
+                        onClick={(): void => { void copyToClipboard(link, `vid-${idx}`); }}
                         className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200"
                         title="Copy"
                       >
@@ -249,6 +249,5 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
     </div>
   );
 }
-
 
 

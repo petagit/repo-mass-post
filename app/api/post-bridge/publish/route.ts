@@ -54,15 +54,34 @@ export async function POST(req: Request): Promise<NextResponse> {
       destinations.push(...body.destinations);
     }
 
+    // Prefer posting videos: filter the incoming list down to videos when present
+    const isVideo = (u: string): boolean => /\.(mp4|mov|m3u8|mpd)(\?|$)/i.test(u);
+    const isImage = (u: string): boolean => /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(u);
+    const videos = body.mediaUrls.filter(isVideo);
+    const images = body.mediaUrls.filter(isImage);
+    const chosenMedia = videos.length > 0 ? videos : images.length > 0 ? images : body.mediaUrls;
+
+    // Build platform-specific configuration: for Instagram, prefer Reels when posting video
+    const platform_configurations: any = videos.length > 0 ? { instagram: { placement: "reel" } } : undefined;
+
+    // Convert destination ids to numeric array when possible (preferred by API)
+    const numericDestinations = destinations
+      .map((d) => Number(d))
+      .filter((n) => Number.isFinite(n)) as number[];
+
     const payload = {
       title: body.title ?? "",
       caption: body.caption ?? "",
       text: body.caption ?? "", // compatibility with older schemas
-      media_urls: body.mediaUrls,
-      destinations, // some schemas
-      social_accounts: destinations, // other schemas
-      social_account_ids: destinations, // other schemas
-      accounts: destinations, // extra compatibility
+      media_urls: chosenMedia,
+      platform_configurations,
+      // Preferred field:
+      social_accounts: numericDestinations.length > 0 ? numericDestinations : undefined,
+      // Compatibility fallbacks:
+      destinations,
+      social_account_ids: destinations,
+      accounts: destinations,
+      processing_enabled: true,
     } as const;
 
     const res = await fetch(`${baseUrl}/v1/posts`, {
@@ -84,6 +103,4 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: e?.message || "Unexpected error" }, { status: 500 });
   }
 }
-
-
 

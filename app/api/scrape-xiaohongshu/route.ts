@@ -32,6 +32,29 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
       }
     } catch {}
 
+    // If we were given an xhslink.com short URL, try to resolve it first so the helper gets the canonical URL.
+    if (/^https?:\/\/(?:www\.)?xhslink\.com\//i.test(targetUrl)) {
+      try {
+        // Prefer HEAD to avoid downloading content
+        const head = await fetch(targetUrl, { method: "HEAD", redirect: "follow" });
+        const final = head.url || targetUrl;
+        if (final && /https?:\/\//i.test(final)) {
+          const pf = new URL(final);
+          if (!/xhslink\.com$/i.test(pf.hostname)) targetUrl = final;
+        }
+      } catch {
+        try {
+          // Some servers disallow HEAD; do a tiny ranged GET
+          const get = await fetch(targetUrl, { method: "GET", headers: { Range: "bytes=0-1" }, redirect: "follow" });
+          const final = get.url || targetUrl;
+          if (final && /https?:\/\//i.test(final)) {
+            const pf = new URL(final);
+            if (!/xhslink\.com$/i.test(pf.hostname)) targetUrl = final;
+          }
+        } catch { /* ignore */ }
+      }
+    }
+
     // Use KuKuTool helper. They typically render results after a POST submit; try both GET and POST.
     const helperUrl = `https://dy.kukutool.com/xiaohongshu?url=${encodeURIComponent(targetUrl)}`;
     const commonHeaders = {
