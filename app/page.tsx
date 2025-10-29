@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import XHSdownload, { type XHSDownloadResult } from "./components/XHSdownload";
+import PostResults from "./components/PostResults";
 
 type Platform = "instagram" | "x";
 
@@ -192,6 +193,11 @@ export default function Page(): JSX.Element {
             </ul>
           </section>
         )}
+
+        <section className="bg-white rounded-lg shadow p-5">
+          <h2 className="font-medium mb-3">4) Recent Post Results</h2>
+          <PostResults />
+        </section>
       </div>
     </main>
   );
