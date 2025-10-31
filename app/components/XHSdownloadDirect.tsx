@@ -46,6 +46,10 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
     return Boolean(result && (result.imageLinks.length > 0 || result.videoLinks.length > 0));
   }, [result]);
 
+  const urlCount: number = useMemo(() => {
+    return Array.from(url.matchAll(/https?:\/\/[^\s]+/gi)).length;
+  }, [url]);
+
   const copyToClipboard = useCallback(async (text: string, key: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
@@ -70,13 +74,29 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
     e.preventDefault();
     if (!url.trim()) return;
 
+    // Extract all URLs from multiline text
+    const urlRegex = /https?:\/\/[^\s]+/gi;
+    const urls: string[] = Array.from(url.matchAll(urlRegex)).map((match) => match[0]);
+    
+    if (urls.length === 0) {
+      const fallback: XHSDownloadResult = {
+        success: false,
+        imageLinks: [],
+        videoLinks: [],
+        error: "No valid URLs found in input",
+      };
+      setResult(fallback);
+      if (onComplete) onComplete(fallback);
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     try {
       const response: Response = await fetch(apiPath, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ urls }),
       });
       const ct = response.headers.get("content-type") || "";
       if (!ct.includes("application/json")) {
@@ -109,21 +129,21 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
   return (
     <div className={className}>
       <form onSubmit={handleSubmit} className="space-y-3">
-        <input
-          type="text"
+        <textarea
           value={url}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>): void => setUrl(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>): void => setUrl(e.target.value)}
           placeholder={placeholder}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-y min-h-[120px]"
           disabled={loading}
           autoFocus={autoFocus}
+          rows={8}
         />
         <button
           type="submit"
           disabled={loading || !url.trim()}
           className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-lg transition-colors"
         >
-          {loading ? "Processing…" : buttonText}
+          {loading ? "Processing…" : `${buttonText}${urlCount > 0 ? ` (${urlCount} link${urlCount !== 1 ? "s" : ""} found)` : ""}`}
         </button>
       </form>
 
@@ -332,4 +352,5 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
     </div>
   );
 }
+
 

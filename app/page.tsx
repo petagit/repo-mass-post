@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import XHSdownload, { type XHSDownloadResult } from "./components/XHSdownload";
 import XHSdownloadCaptured from "./components/XHSdownloadCaptured";
@@ -16,7 +16,7 @@ export interface Destination {
   avatarUrl?: string;
 }
 
-export default function Page(): JSX.Element {
+export default function Page() {
   const [media, setMedia] = useState<XHSDownloadResult | null>(null);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -26,8 +26,8 @@ export default function Page(): JSX.Element {
   const [publishing, setPublishing] = useState<boolean>(false);
   const [destError, setDestError] = useState<string>("");
   
-  // Bulk schedule settings
-  const [useBulkSchedule, setUseBulkSchedule] = useState<boolean>(false);
+  // Bulk schedule settings (default to true)
+  const [useBulkSchedule, setUseBulkSchedule] = useState<boolean>(true);
   const [bulkCaption, setBulkCaption] = useState<string>("");
   const [startDate, setStartDate] = useState<string>(() => {
     const tomorrow = new Date();
@@ -182,10 +182,59 @@ export default function Page(): JSX.Element {
     }
   }, [mediaUrls, selected, bulkCaption, caption, title, startDate, startTime, videosPerDay]);
 
+  // Calculate schedule preview
+  const schedulePreview: Array<{ date: string; time: string; caption: string; mediaUrl: string; index: number }> = useMemo(() => {
+    if (!useBulkSchedule || mediaUrls.length === 0 || !startDate || !startTime) {
+      return [];
+    }
+
+    const [year, month, day] = startDate.split("-").map(Number);
+    const [hours, minutes] = startTime.split(":").map(Number);
+    const startDateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+
+    const preview: Array<{ date: string; time: string; caption: string; mediaUrl: string; index: number }> = [];
+
+    for (let i = 0; i < mediaUrls.length; i++) {
+      const dayIndex = Math.floor(i / videosPerDay);
+      const videoIndexInDay = i % videosPerDay;
+      
+      const scheduledDate = new Date(startDateTime);
+      scheduledDate.setUTCDate(scheduledDate.getUTCDate() + dayIndex);
+      
+      const hoursPerDay = 24;
+      const timeIntervalHours = hoursPerDay / videosPerDay;
+      const scheduledHours = hours + (videoIndexInDay * timeIntervalHours);
+      
+      let scheduledHour = Math.floor(scheduledHours) % 24;
+      const scheduledMinute = Math.floor((scheduledHours % 1) * 60);
+      
+      if (scheduledHours >= 24) {
+        scheduledDate.setUTCDate(scheduledDate.getUTCDate() + 1);
+      }
+      
+      scheduledDate.setUTCHours(scheduledHour, scheduledMinute, 0, 0);
+
+      const dateStr = scheduledDate.toISOString().split("T")[0];
+      const timeStr = `${String(scheduledHour).padStart(2, "0")}:${String(scheduledMinute).padStart(2, "0")}`;
+      
+      preview.push({
+        date: dateStr,
+        time: timeStr,
+        caption: bulkCaption || caption,
+        mediaUrl: mediaUrls[i],
+        index: i + 1,
+      });
+    }
+
+    return preview;
+  }, [useBulkSchedule, mediaUrls, startDate, startTime, videosPerDay, bulkCaption, caption]);
+
   return (
-    <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-semibold mb-4">XHS → Post-Bridge</h1>
-      <div className="space-y-6">
+    <div className="flex flex-col lg:flex-row gap-6 p-6 min-h-screen">
+      {/* Main content */}
+      <main className="flex-1 max-w-3xl w-full">
+        <h1 className="text-2xl font-semibold mb-4">XHS → Post-Bridge</h1>
+        <div className="space-y-6">
         <section className="bg-white rounded-lg shadow p-5 border-2 border-red-500">
           <div className="flex items-center gap-2 mb-3">
             <h2 className="font-medium">1) Extract from Xiaohongshu (Direct Method)</h2>
@@ -204,7 +253,7 @@ export default function Page(): JSX.Element {
                 toast.error(r.error || "Failed to extract");
               }
             }}
-            placeholder="Paste XHS shortened link (e.g., http://xhslink.com/o/7YhgVFfH3N5)"
+            placeholder="Paste XHS shortened links (one per line or multiple links in text)..."
             autoFocus={true}
           />
         </section>
@@ -269,44 +318,19 @@ export default function Page(): JSX.Element {
 
         <section className="bg-white rounded-lg shadow p-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium">3) Post Settings</h2>
+            <h2 className="font-medium">3) Schedule Settings</h2>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={useBulkSchedule}
-                onChange={(e): void => setUseBulkSchedule(e.target.checked)}
+                checked={!useBulkSchedule}
+                onChange={(e): void => setUseBulkSchedule(!e.target.checked)}
                 className="w-4 h-4"
               />
-              <span className="text-sm">Bulk Schedule</span>
+              <span className="text-sm">Immediate Post</span>
             </label>
           </div>
 
-          {!useBulkSchedule ? (
-            <>
-              <input
-                type="text"
-                value={title}
-                onChange={(e): void => setTitle(e.target.value)}
-                className="w-full mb-3 px-3 py-2 border rounded-lg"
-                placeholder="Enter a title (optional)"
-              />
-              <textarea
-                value={caption}
-                onChange={(e): void => setCaption(e.target.value)}
-                className="w-full min-h-24 resize-y px-3 py-2 border rounded-lg"
-                placeholder="Write an optional caption…"
-              />
-              <div className="mt-4">
-                <button
-                  onClick={(): void => void publish()}
-                  disabled={publishing}
-                  className="px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400"
-                >
-                  {publishing ? "Posting…" : "Post via Post-Bridge"}
-                </button>
-              </div>
-            </>
-          ) : (
+          {useBulkSchedule ? (
             <>
               <div className="space-y-4">
                 <div>
@@ -384,6 +408,31 @@ export default function Page(): JSX.Element {
                 </div>
               </div>
             </>
+          ) : (
+            <>
+              <input
+                type="text"
+                value={title}
+                onChange={(e): void => setTitle(e.target.value)}
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                placeholder="Enter a title (optional)"
+              />
+              <textarea
+                value={caption}
+                onChange={(e): void => setCaption(e.target.value)}
+                className="w-full min-h-24 resize-y px-3 py-2 border rounded-lg"
+                placeholder="Write an optional caption…"
+              />
+              <div className="mt-4">
+                <button
+                  onClick={(): void => void publish()}
+                  disabled={publishing}
+                  className="px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400"
+                >
+                  {publishing ? "Posting…" : "Post via Post-Bridge"}
+                </button>
+              </div>
+            </>
           )}
         </section>
 
@@ -398,7 +447,59 @@ export default function Page(): JSX.Element {
           </section>
         )}
       </div>
-    </main>
+      </main>
+
+      {/* Sidebar - Schedule Preview */}
+      {useBulkSchedule && mediaUrls.length > 0 && (
+        <aside className="w-full lg:w-80 flex-shrink-0">
+          <div className="bg-white rounded-lg shadow p-5 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
+            <h2 className="font-semibold text-lg mb-4">Schedule Preview</h2>
+            <div className="space-y-3">
+              {schedulePreview.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <span className="text-xs font-medium text-gray-500">
+                      #{item.index}
+                    </span>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold">{item.date}</div>
+                      <div className="text-xs text-gray-500">{item.time}</div>
+                    </div>
+                  </div>
+                  {item.caption && (
+                    <p className="text-xs text-gray-700 line-clamp-2 mt-2">
+                      {item.caption}
+                    </p>
+                  )}
+                  <div className="mt-2 text-xs text-gray-400 truncate">
+                    {item.mediaUrl.split("/").pop() || item.mediaUrl.slice(0, 30) + "..."}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t">
+              <div className="text-sm text-gray-600">
+                <div className="flex justify-between mb-1">
+                  <span>Total:</span>
+                  <span className="font-semibold">{mediaUrls.length} video{mediaUrls.length !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="flex justify-between mb-1">
+                  <span>Days:</span>
+                  <span className="font-semibold">{Math.ceil(mediaUrls.length / videosPerDay)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Per day:</span>
+                  <span className="font-semibold">{videosPerDay}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      )}
+    </div>
   );
 }
 
