@@ -21,14 +21,14 @@ export default function Page() {
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [title, setTitle] = useState<string>("");
-  const [caption, setCaption] = useState<string>("");
+  const [caption, setCaption] = useState<string>("#etamecosplay #cosplay #cos");
   const [loadingDest, setLoadingDest] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
   const [destError, setDestError] = useState<string>("");
   
   // Bulk schedule settings (default to true)
   const [useBulkSchedule, setUseBulkSchedule] = useState<boolean>(true);
-  const [bulkCaption, setBulkCaption] = useState<string>("");
+  const [bulkCaption, setBulkCaption] = useState<string>("#etamecosplay #cosplay #cos");
   const [startDate, setStartDate] = useState<string>(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -37,6 +37,8 @@ export default function Page() {
   const [startTime, setStartTime] = useState<string>("09:00");
   const [videosPerDay, setVideosPerDay] = useState<number>(1);
   const [scheduling, setScheduling] = useState<boolean>(false);
+  // Individual captions for each video (indexed by video index)
+  const [individualCaptions, setIndividualCaptions] = useState<Map<number, string>>(new Map());
 
   const mediaUrls = useMemo<string[]>(() => {
     if (!media?.success) return [];
@@ -91,6 +93,11 @@ export default function Page() {
   useEffect(() => {
     void fetchDestinations();
   }, [fetchDestinations]);
+
+  // Reset individual captions when media URLs change
+  useEffect(() => {
+    setIndividualCaptions(new Map());
+  }, [mediaUrls]);
 
   const toggle = (id: string): void => {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -151,13 +158,20 @@ export default function Page() {
     setScheduling(true);
     const tId = toast.loading(`Scheduling ${mediaUrls.length} videos via Post-Bridge…`);
     try {
+      // Build array of captions, one per video
+      const captionsArray: string[] = mediaUrls.map((_, i) => {
+        const individualCaption = individualCaptions.get(i);
+        return individualCaption !== undefined ? individualCaption : (bulkCaption || caption);
+      });
+      
       const res = await fetch("/api/post-bridge/bulk-schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mediaUrls,
           destinations: selected,
-          caption: bulkCaption || caption,
+          caption: bulkCaption || caption, // Keep for backward compatibility
+          captions: captionsArray, // Per-video captions
           title,
           startDate,
           startTime,
@@ -180,7 +194,7 @@ export default function Page() {
     } finally {
       setScheduling(false);
     }
-  }, [mediaUrls, selected, bulkCaption, caption, title, startDate, startTime, videosPerDay]);
+  }, [mediaUrls, selected, bulkCaption, caption, title, startDate, startTime, videosPerDay, individualCaptions]);
 
   // Calculate schedule preview
   const schedulePreview: Array<{ date: string; time: string; caption: string; mediaUrl: string; index: number }> = useMemo(() => {
@@ -217,17 +231,19 @@ export default function Page() {
       const dateStr = scheduledDate.toISOString().split("T")[0];
       const timeStr = `${String(scheduledHour).padStart(2, "0")}:${String(scheduledMinute).padStart(2, "0")}`;
       
+      // Use individual caption if set, otherwise fall back to bulk caption or default caption
+      const individualCaption = individualCaptions.get(i);
       preview.push({
         date: dateStr,
         time: timeStr,
-        caption: bulkCaption || caption,
+        caption: individualCaption !== undefined ? individualCaption : (bulkCaption || caption),
         mediaUrl: mediaUrls[i],
         index: i + 1,
       });
     }
 
     return preview;
-  }, [useBulkSchedule, mediaUrls, startDate, startTime, videosPerDay, bulkCaption, caption]);
+  }, [useBulkSchedule, mediaUrls, startDate, startTime, videosPerDay, bulkCaption, caption, individualCaptions]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-6 min-h-screen">
@@ -334,7 +350,24 @@ export default function Page() {
             <>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Bulk Caption</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium">Bulk Caption</label>
+                    <button
+                      onClick={(): void => {
+                        // Apply bulk caption to all videos
+                        const newCaptions = new Map<number, string>();
+                        for (let i = 0; i < mediaUrls.length; i++) {
+                          newCaptions.set(i, bulkCaption);
+                        }
+                        setIndividualCaptions(newCaptions);
+                        toast.success(`Applied caption to ${mediaUrls.length} video${mediaUrls.length !== 1 ? "s" : ""}`);
+                      }}
+                      disabled={mediaUrls.length === 0}
+                      className="px-3 py-1 text-xs rounded bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      Apply
+                    </button>
+                  </div>
                   <textarea
                     value={bulkCaption}
                     onChange={(e): void => setBulkCaption(e.target.value)}
@@ -455,30 +488,75 @@ export default function Page() {
           <div className="bg-white rounded-lg shadow p-5 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
             <h2 className="font-semibold text-lg mb-4">Schedule Preview</h2>
             <div className="space-y-3">
-              {schedulePreview.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="text-xs font-medium text-gray-500">
-                      #{item.index}
-                    </span>
-                    <div className="text-right">
-                      <div className="text-sm font-semibold">{item.date}</div>
-                      <div className="text-xs text-gray-500">{item.time}</div>
+              {schedulePreview.map((item, idx) => {
+                const isVideo = /\.(mp4|mov|m3u8|mpd)(\?|$)/i.test(item.mediaUrl);
+                const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(item.mediaUrl);
+                return (
+                  <div
+                    key={idx}
+                    className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-500">
+                        #{item.index}
+                      </span>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold">{item.date}</div>
+                        <div className="text-xs text-gray-500">{item.time}</div>
+                      </div>
+                    </div>
+                    {/* Thumbnail */}
+                    <div className="mt-2 mb-2 rounded overflow-hidden bg-gray-100 w-20 h-12 flex-shrink-0">
+                      {isVideo ? (
+                        <video
+                          src={item.mediaUrl}
+                          className="w-full h-full object-cover"
+                          preload="metadata"
+                          muted
+                          playsInline
+                          onLoadedMetadata={(e): void => {
+                            // Seek to first frame for thumbnail
+                            const video = e.currentTarget;
+                            video.currentTime = 0.1;
+                          }}
+                        />
+                      ) : isImage ? (
+                        <img
+                          src={item.mediaUrl}
+                          alt={`Preview ${item.index}`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                          Preview unavailable
+                        </div>
+                      )}
+                    </div>
+                    {/* Editable Caption */}
+                    <div className="mt-2">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Caption</label>
+                      <textarea
+                        value={item.caption}
+                        onChange={(e): void => {
+                          const newCaptions = new Map(individualCaptions);
+                          newCaptions.set(item.index - 1, e.target.value);
+                          setIndividualCaptions(newCaptions);
+                        }}
+                        className="w-full min-h-16 resize-y px-2 py-1 text-xs border rounded-lg"
+                        placeholder="Enter caption..."
+                        maxLength={2200}
+                      />
+                      <div className="text-xs text-gray-400 mt-1 text-right">
+                        {item.caption.length}/2200
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-400 truncate">
+                      {item.mediaUrl.split("/").pop() || item.mediaUrl.slice(0, 30) + "..."}
                     </div>
                   </div>
-                  {item.caption && (
-                    <p className="text-xs text-gray-700 line-clamp-2 mt-2">
-                      {item.caption}
-                    </p>
-                  )}
-                  <div className="mt-2 text-xs text-gray-400 truncate">
-                    {item.mediaUrl.split("/").pop() || item.mediaUrl.slice(0, 30) + "..."}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="mt-4 pt-4 border-t">
               <div className="text-sm text-gray-600">

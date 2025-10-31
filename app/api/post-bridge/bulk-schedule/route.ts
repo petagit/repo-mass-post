@@ -12,6 +12,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       mediaUrls: string[];
       destinations: string[];
       caption?: string;
+      captions?: string[]; // Optional array of captions, one per video
       startDate: string; // ISO date string (YYYY-MM-DD)
       startTime: string; // HH:mm format
       videosPerDay: number; // 1-24
@@ -113,13 +114,18 @@ export async function POST(req: Request): Promise<NextResponse> {
       const isVideo = /\.(mp4|mov|m3u8|mpd)(\?|$)/i.test(mediaUrl);
       const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(mediaUrl);
       
+      // Use individual caption if available, otherwise fall back to bulk caption
+      const videoCaption = (body.captions && body.captions[i] !== undefined) 
+        ? body.captions[i] 
+        : (body.caption ?? "");
+      
       // Build platform-specific configuration
       const platform_configurations: any = isVideo ? { instagram: { placement: "reel" } } : undefined;
 
       const payload = {
         title: body.title ?? "",
-        caption: body.caption ?? "",
-        text: body.caption ?? "", // compatibility with older schemas
+        caption: videoCaption,
+        text: videoCaption, // compatibility with older schemas
         media_urls: [mediaUrl],
         platform_configurations,
         social_accounts: numericDestinations.length > 0 ? numericDestinations : undefined,
