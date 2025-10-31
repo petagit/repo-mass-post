@@ -10,36 +10,31 @@ export interface XHSDownloadResult {
   debugUrls?: string[];
 }
 
-export interface XHSdownloadProps {
+export interface XHSdownloadCapturedProps {
   apiPath?: string;
   className?: string;
   onComplete?: (result: XHSDownloadResult) => void;
   placeholder?: string;
   buttonText?: string;
   autoFocus?: boolean;
-  allowDownloadAll?: boolean;
 }
 
-export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
+export default function XHSdownloadCaptured(props: XHSdownloadCapturedProps): JSX.Element {
   const {
-    apiPath = "/api/scrape-xiaohongshu",
+    apiPath = "/api/scrape-xiaohongshu-captured",
     className,
     onComplete,
-    placeholder = "Paste Xiaohongshu link (https://www.xiaohongshu.com/… or https://xhslink.com/…)",
-    buttonText = "Extract Content",
+    placeholder = "Paste XHS link — Captured mode (api_call)",
+    buttonText = "Extract (Captured)",
     autoFocus = false,
-    allowDownloadAll = true,
   } = props;
 
   const [url, setUrl] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [result, setResult] = useState<XHSDownloadResult | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [isDownloadingAll, setIsDownloadingAll] = useState<boolean>(false);
 
-  const hasResults: boolean = useMemo(() => {
-    return Boolean(result && (result.imageLinks.length > 0 || result.videoLinks.length > 0));
-  }, [result]);
+  const hasResults: boolean = useMemo(() => Boolean(result && (result.imageLinks.length > 0 || result.videoLinks.length > 0)), [result]);
 
   const copyToClipboard = useCallback(async (text: string, key: string): Promise<void> => {
     try {
@@ -60,23 +55,6 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
     a.click();
     document.body.removeChild(a);
   }, []);
-
-  const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
-  const downloadAllImages = useCallback(async (): Promise<void> => {
-    if (!result || result.imageLinks.length === 0) return;
-    try {
-      setIsDownloadingAll(true);
-      for (let i = 0; i < result.imageLinks.length; i++) {
-        const link: string = result.imageLinks[i];
-        downloadLink(link);
-        // eslint-disable-next-line no-await-in-loop
-        await sleep(250);
-      }
-    } finally {
-      setIsDownloadingAll(false);
-    }
-  }, [result, downloadLink]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -103,7 +81,7 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
         success: false,
         imageLinks: [],
         videoLinks: [],
-        error: err instanceof Error ? err.message : "Failed to scrape content",
+        error: err instanceof Error ? err.message : "Failed to extract (captured)",
       };
       setResult(fallback);
       if (onComplete) onComplete(fallback);
@@ -150,19 +128,7 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
                 </div>
                 {hasResults && (
                   <div className="flex items-center gap-2">
-                    {allowDownloadAll && (
-                      <button
-                        onClick={downloadAllImages}
-                        disabled={isDownloadingAll || result.imageLinks.length === 0}
-                        className="px-3 py-2 text-sm rounded bg-gray-100 hover:bg-gray-200 disabled:bg-gray-300"
-                      >
-                        {isDownloadingAll ? "Downloading…" : "Download All Images"}
-                      </button>
-                    )}
-                    <button
-                      onClick={copyAll}
-                      className="px-3 py-2 text-sm rounded bg-gray-100 hover:bg-gray-200"
-                    >
+                    <button onClick={copyAll} className="px-3 py-2 text-sm rounded bg-gray-100 hover:bg-gray-200">
                       {copiedKey === "all" ? "Copied!" : "Copy All Links"}
                     </button>
                   </div>
@@ -241,7 +207,7 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
             </div>
           ) : (
             <div className="text-center py-8">
-              <div className="text-red-500 font-semibold mb-2">Failed to Extract Content</div>
+              <div className="text-red-500 font-semibold mb-2">Failed to Extract (Captured)</div>
               <div className="text-gray-600 text-sm">{result.error || "Unknown error"}</div>
               {Array.isArray(result.debugUrls) && result.debugUrls.length > 0 && (
                 <details className="mt-4 text-left inline-block max-w-full">
@@ -267,3 +233,6 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
     </div>
   );
 }
+
+
+

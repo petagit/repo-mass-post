@@ -1,0 +1,35 @@
+c. 下单成功页面（Order Confirmation Page）
+在客户下单成功后显示以下文字：
+“Order Confirmed! 🎉 Thank you so much for your order.
+Since this is a customized cake, please reach out to us on Instagram or via
+email to share your design photo and details.
+Instagram: @lumii
+_paws
+Email: lumiipaws0206@gmail.com”
+如果订单里没有定制蛋糕（只有零食），就不要显示这段话。
+d. 订单确认邮件（Order Confirmation Email）
+
+
+{% comment %}Show callout only if the order includes a customized cake{% endcomment %}
+{% assign has_custom_cake = false %}
+{% for line_item in checkout.line_items %}
+  {% if line_item.product %}
+    {% assign tags_string = line_item.product.tags | join: ',' | downcase %}
+    {% assign product_type = line_item.product.type | downcase %}
+    {% if tags_string contains 'custom-cake' or product_type contains 'custom cake' %}
+      {% assign has_custom_cake = true %}
+      {% break %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% if has_custom_cake %}
+  <div class="order-confirmation-message" style="margin:16px 0;padding:16px;border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;">
+    <p style="margin:0;">
+      Order Confirmed! 🎉 Thank you so much for your order.<br>
+      Since this is a customized cake, please reach out to us on Instagram or via email to share your design photo and details.<br>
+      Instagram: @lumii_paws<br>
+      Email: <a href="mailto:lumiipaws0206@gmail.com">lumiipaws0206@gmail.com</a>
+    </p>
+  </div>
+{% endif %}

@@ -8,34 +8,39 @@ export interface XHSDownloadResult {
   videoLinks: string[];
   error?: string;
   debugUrls?: string[];
+  resolvedUrl?: string;
+  testedVideoUrl?: string;
+  testResult?: {
+    status: number;
+    contentType?: string;
+    accessible: boolean;
+    headers?: Record<string, string>;
+  };
 }
 
-export interface XHSdownloadProps {
+export interface XHSdownloadDirectProps {
   apiPath?: string;
   className?: string;
   onComplete?: (result: XHSDownloadResult) => void;
   placeholder?: string;
   buttonText?: string;
   autoFocus?: boolean;
-  allowDownloadAll?: boolean;
 }
 
-export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
+export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.Element {
   const {
-    apiPath = "/api/scrape-xiaohongshu",
+    apiPath = "/api/scrape-xiaohongshu-direct",
     className,
     onComplete,
-    placeholder = "Paste Xiaohongshu link (https://www.xiaohongshu.com/… or https://xhslink.com/…)",
-    buttonText = "Extract Content",
+    placeholder = "Paste XHS shortened link (xhslink.com) — Direct extraction",
+    buttonText = "Extract Directly",
     autoFocus = false,
-    allowDownloadAll = true,
   } = props;
 
   const [url, setUrl] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [result, setResult] = useState<XHSDownloadResult | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [isDownloadingAll, setIsDownloadingAll] = useState<boolean>(false);
 
   const hasResults: boolean = useMemo(() => {
     return Boolean(result && (result.imageLinks.length > 0 || result.videoLinks.length > 0));
@@ -60,23 +65,6 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
     a.click();
     document.body.removeChild(a);
   }, []);
-
-  const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
-  const downloadAllImages = useCallback(async (): Promise<void> => {
-    if (!result || result.imageLinks.length === 0) return;
-    try {
-      setIsDownloadingAll(true);
-      for (let i = 0; i < result.imageLinks.length; i++) {
-        const link: string = result.imageLinks[i];
-        downloadLink(link);
-        // eslint-disable-next-line no-await-in-loop
-        await sleep(250);
-      }
-    } finally {
-      setIsDownloadingAll(false);
-    }
-  }, [result, downloadLink]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -103,7 +91,7 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
         success: false,
         imageLinks: [],
         videoLinks: [],
-        error: err instanceof Error ? err.message : "Failed to scrape content",
+        error: err instanceof Error ? err.message : "Failed to extract content",
       };
       setResult(fallback);
       if (onComplete) onComplete(fallback);
@@ -143,6 +131,41 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
         <div className="mt-6 bg-white rounded-lg shadow p-5">
           {result.success ? (
             <div className="space-y-5">
+              {result.resolvedUrl && (
+                <div className="pb-3 border-b">
+                  <div className="text-sm text-gray-600 mb-1">Resolved URL:</div>
+                  <div className="text-xs text-blue-600 break-all">{result.resolvedUrl}</div>
+                </div>
+              )}
+
+              {result.testedVideoUrl && result.testResult && (
+                <div className="pb-3 border-b">
+                  <div className="text-sm font-medium mb-2">Video URL Test Result:</div>
+                  <div className="text-xs text-blue-600 break-all mb-2">{result.testedVideoUrl}</div>
+                  <div className="text-xs space-y-1">
+                    <div>
+                      <span className="font-medium">Status:</span>{" "}
+                      <span className={result.testResult.accessible ? "text-green-600" : "text-red-600"}>
+                        {result.testResult.status} {result.testResult.accessible ? "✓ Accessible" : "✗ Failed"}
+                      </span>
+                    </div>
+                    {result.testResult.contentType && (
+                      <div>
+                        <span className="font-medium">Content-Type:</span> {result.testResult.contentType}
+                      </div>
+                    )}
+                    {result.testResult.headers && Object.keys(result.testResult.headers).length > 0 && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-gray-500">Response Headers</summary>
+                        <pre className="mt-1 p-2 bg-gray-50 rounded text-xs overflow-auto">
+                          {JSON.stringify(result.testResult.headers, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between pb-3 border-b gap-2 flex-wrap">
                 <div className="text-gray-700 flex items-center gap-4">
                   <span className="font-medium">{result.imageLinks.length} Images</span>
@@ -150,15 +173,6 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
                 </div>
                 {hasResults && (
                   <div className="flex items-center gap-2">
-                    {allowDownloadAll && (
-                      <button
-                        onClick={downloadAllImages}
-                        disabled={isDownloadingAll || result.imageLinks.length === 0}
-                        className="px-3 py-2 text-sm rounded bg-gray-100 hover:bg-gray-200 disabled:bg-gray-300"
-                      >
-                        {isDownloadingAll ? "Downloading…" : "Download All Images"}
-                      </button>
-                    )}
                     <button
                       onClick={copyAll}
                       className="px-3 py-2 text-sm rounded bg-gray-100 hover:bg-gray-200"
@@ -184,7 +198,9 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
                         {link}
                       </a>
                       <button
-                        onClick={(): void => { void copyToClipboard(link, `img-${idx}`); }}
+                        onClick={(): void => {
+                          void copyToClipboard(link, `img-${idx}`);
+                        }}
                         className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200"
                         title="Copy"
                       >
@@ -217,7 +233,9 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
                         {link}
                       </a>
                       <button
-                        onClick={(): void => { void copyToClipboard(link, `vid-${idx}`); }}
+                        onClick={(): void => {
+                          void copyToClipboard(link, `vid-${idx}`);
+                        }}
                         className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200"
                         title="Copy"
                       >
@@ -238,21 +256,68 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
               {result.imageLinks.length === 0 && result.videoLinks.length === 0 && (
                 <div className="text-center text-gray-600 py-8">No media found.</div>
               )}
+
+              {Array.isArray(result.debugUrls) && result.debugUrls.length > 0 && (
+                <details className="mt-4 text-left">
+                  <summary className="cursor-pointer text-xs text-gray-500">
+                    Debug URLs ({result.debugUrls.length})
+                  </summary>
+                  <div className="mt-2 p-2 bg-gray-50 rounded border max-h-48 overflow-auto text-xs text-gray-700 space-y-1">
+                    {result.debugUrls.map((u: string, i: number) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <a
+                          className="flex-1 truncate text-blue-600 hover:text-blue-800"
+                          href={u}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {u}
+                        </a>
+                        <button
+                          onClick={(): void => {
+                            void copyToClipboard(u, `dbg-${i}`);
+                          }}
+                          className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200"
+                        >
+                          {copiedKey === `dbg-${i}` ? "Copied" : "Copy"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           ) : (
             <div className="text-center py-8">
               <div className="text-red-500 font-semibold mb-2">Failed to Extract Content</div>
               <div className="text-gray-600 text-sm">{result.error || "Unknown error"}</div>
+              {result.resolvedUrl && (
+                <div className="mt-3 text-xs text-gray-500">
+                  Resolved URL: <span className="text-blue-600 break-all">{result.resolvedUrl}</span>
+                </div>
+              )}
               {Array.isArray(result.debugUrls) && result.debugUrls.length > 0 && (
                 <details className="mt-4 text-left inline-block max-w-full">
-                  <summary className="cursor-pointer text-xs text-gray-500">Debug candidates ({result.debugUrls.length})</summary>
+                  <summary className="cursor-pointer text-xs text-gray-500">
+                    Debug candidates ({result.debugUrls.length})
+                  </summary>
                   <div className="mt-2 p-2 bg-gray-50 rounded border max-h-48 overflow-auto text-xs text-gray-700 space-y-1">
                     {result.debugUrls.slice(0, 20).map((u: string, i: number) => (
                       <div key={i} className="flex items-center gap-2">
-                        <a className="flex-1 truncate text-blue-600 hover:text-blue-800" href={u} target="_blank" rel="noreferrer">
+                        <a
+                          className="flex-1 truncate text-blue-600 hover:text-blue-800"
+                          href={u}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           {u}
                         </a>
-                        <button onClick={(): void => { void copyToClipboard(u, `dbg-${i}`); }} className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200">
+                        <button
+                          onClick={(): void => {
+                            void copyToClipboard(u, `dbg-${i}`);
+                          }}
+                          className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200"
+                        >
                           {copiedKey === `dbg-${i}` ? "Copied" : "Copy"}
                         </button>
                       </div>
@@ -267,3 +332,4 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
     </div>
   );
 }
+

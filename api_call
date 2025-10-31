@@ -1,0 +1,127 @@
+
+accept
+*/*
+accept-encoding
+gzip, deflate, br, zstd
+accept-language
+en-US,en;q=0.9
+connection
+keep-alive
+content-length
+229
+content-type
+application/json
+cookie
+NEXT_LOCALE=en; _pk_id.1.2b9a=c9acb6ac3835fb94.1759691777.; _pk_ref.1.2b9a=%5B%22%22%2C%22%22%2C1761894497%2C%22https%3A%2F%2Fwww.google.com%2F%22%5D; _pk_ses.1.2b9a=1
+host
+dy.kukutool.com
+origin
+https://dy.kukutool.com
+referer
+https://dy.kukutool.com/xiaohongshu
+sec-ch-ua
+"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"
+sec-ch-ua-mobile
+?1
+sec-ch-ua-platform
+"Android"
+sec-fetch-dest
+empty
+sec-fetch-mode
+cors
+sec-fetch-site
+same-origin
+user-agent
+Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36
+
+
+parse-stat
+parse-stat
+3 / 19 requests
+1.9 kB / 499 kB transferred
+{,…}
+captchaInput
+: 
+""
+captchaKey
+: 
+""
+requestURL
+: 
+"不打球就下来 http://xhslink.com/o/5sOapFRAkPK Copy and open Xiaohongshu to view the full post！"
+salt
+: 
+"a252iim6"
+sign
+: 
+"de0e092cb17b24ec7a27e88dece7cab0"
+ts
+: 
+1761894596
+
+
+
+
+response
+accept-ranges
+bytes
+access-control-allow-credentials
+true
+access-control-allow-headers
+origin,range,hdntl,hdnts,CMCD-Request,CMCD-Object,CMCD-Status,CMCD-Session
+access-control-allow-methods
+GET,POST,OPTIONS
+access-control-allow-origin
+*
+access-control-expose-headers
+Server,range,hdntl,hdnts,Akamai-Mon-Iucid-Ing,Akamai-Mon-Iucid-Del,Akamai-Request-BC,Content-Length
+access-control-max-age
+86400
+akamai-mon-iucid-del
+1758321
+cache-control
+max-age=15552000
+content-length
+2135268
+content-range
+bytes 0-2135267/2135268
+content-type
+video/mp4
+date
+Fri, 31 Oct 2025 07:08:47 GMT
+etag
+"2366dae76de1e3f688952161d421aa15"
+expires
+Wed, 29 Apr 2026 07:08:47 GMT
+last-modified
+Fri, 31 Oct 2025 07:08:46 GMT
+server
+tencent-cos
+x-cos-hash-crc64ecma
+7952640617825899309
+x-cos-request-id
+NjkwNDYwN2ZfNWFiNjNlMDlfNzE3N18xMDc1ODdhOA==
+x-cos-trace-id
+OGVmYzZiMmQzYjA2OWNhODk0NTRkMTBiOWVmMDAxODc0OWRkZjk0ZDM1NmI1M2E2MTRlY2MzZDhmNmI5MWI1OWE4OGMxZjNjY2JiNTBmMTVmMWY1MzAzYzkyZGQ2ZWM4MzZkMTZiZDQxYTg4MzRiMzIwYzRkYTRjMWFkNDM3YjQ=
+x-cos-version-id
+MTg0NDQ5ODIxNzkxODMyNzgzMzI
+x-xhs-cache
+MISS from 2001:569:2:102::4072:6c2a
+x-xhs-client-ip
+2001:569:5116:5d00:f4b5:3840:1b1d:26a0
+accept-encoding
+identity;q=1, *;q=0
+range
+bytes=0-
+referer
+sec-ch-ua
+"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"
+sec-ch-ua-mobile
+?1
+sec-ch-ua-platform
+"Android"
+user-agent
+Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36
+
+
+

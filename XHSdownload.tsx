@@ -7,6 +7,7 @@ export interface XHSDownloadResult {
   imageLinks: string[];
   videoLinks: string[];
   error?: string;
+  debugUrls?: string[];
 }
 
 export interface XHSdownloadProps {
@@ -237,6 +238,23 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
             <div className="text-center py-8">
               <div className="text-red-500 font-semibold mb-2">Failed to Extract Content</div>
               <div className="text-gray-600 text-sm">{result.error || "Unknown error"}</div>
+              {Array.isArray(result.debugUrls) && result.debugUrls.length > 0 && (
+                <details className="mt-4 text-left inline-block max-w-full">
+                  <summary className="cursor-pointer text-xs text-gray-500">Debug candidates ({result.debugUrls.length})</summary>
+                  <div className="mt-2 p-2 bg-gray-50 rounded border max-h-48 overflow-auto text-xs text-gray-700 space-y-1">
+                    {result.debugUrls.slice(0, 20).map((u: string, i: number) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <a className="flex-1 truncate text-blue-600 hover:text-blue-800" href={u} target="_blank" rel="noreferrer">
+                          {u}
+                        </a>
+                        <button onClick={(): void => { void copyToClipboard(u, `dbg-${i}`); }} className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200">
+                          {copiedKey === `dbg-${i}` ? "Copied" : "Copy"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           )}
         </div>
@@ -244,4 +262,3 @@ export default function XHSdownload(props: XHSdownloadProps): JSX.Element {
     </div>
   );
 }
-

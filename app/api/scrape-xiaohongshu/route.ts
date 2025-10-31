@@ -7,6 +7,8 @@ export interface XHSDownloadResult {
   imageLinks: string[];
   videoLinks: string[];
   error?: string;
+  // Temporary: include a few candidate URLs for debugging extraction on client side
+  debugUrls?: string[];
 }
 
 export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult>> {
@@ -55,6 +57,51 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
       }
     }
 
+    // Simple DOM-only Playwright path to match the other site's method (opt-in)
+    if (process.env.SIMPLE_DOM_ONLY === "true") {
+      try {
+        const { chromium } = await import("playwright");
+        const browser = await chromium.launch({ headless: true });
+        const context = await browser.newContext({
+          userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        });
+        const cookieHeader = process.env.KUKUTOOL_COOKIES || "";
+        if (cookieHeader) await context.setExtraHTTPHeaders({ Cookie: cookieHeader } as any).catch(() => undefined);
+        const page = await context.newPage();
+        await page.goto("https://dy.kukutool.com/xiaohongshu", { waitUntil: "networkidle" });
+        const input = page.locator('input[type="text"], textarea, input[placeholder]');
+        await input.first().fill(targetUrl);
+        const parseBtn = page.locator('button:has-text("开始解析"), button:has-text("解析"), a:has-text("解析")');
+        if (await parseBtn.first().isVisible()) await parseBtn.first().click(); else await page.keyboard.press("Enter");
+        await page.waitForFunction(() => {
+          const images = document.querySelectorAll('img[src*="http"]');
+          const links = document.querySelectorAll('a[href*="http"]');
+          return images.length > 1 || links.length > 1;
+        }, { timeout: 25000 });
+        await page.waitForTimeout(1500);
+        const simple = await page.evaluate(() => {
+          const imageLinks: string[] = [];
+          const videoLinks: string[] = [];
+          document.querySelectorAll('img[src]').forEach((img) => {
+            const src = (img as HTMLImageElement).src; if (src && src.startsWith('http') && !/logo|icon/i.test(src)) imageLinks.push(src);
+          });
+          document.querySelectorAll('a[href], a[download]').forEach((a) => {
+            const href = (a as HTMLAnchorElement).href; if (!href || !href.startsWith('http')) return;
+            if (/\.(jpg|jpeg|png|webp)/i.test(href)) imageLinks.push(href); else if (/\.(mp4|mov|avi|webm)/i.test(href)) videoLinks.push(href);
+          });
+          document.querySelectorAll('[data-src], [data-url], [data-image]').forEach((el) => {
+            const v = el.getAttribute('data-src') || el.getAttribute('data-url') || el.getAttribute('data-image'); if (v && v.startsWith('http')) imageLinks.push(v);
+          });
+          return { imageLinks: Array.from(new Set(imageLinks)), videoLinks: Array.from(new Set(videoLinks)) };
+        });
+        await browser.close();
+        if (simple.imageLinks.length > 0 || simple.videoLinks.length > 0) {
+          const mp4 = simple.videoLinks.filter((v: string) => /\.mp4(\?|$)/i.test(v));
+          return NextResponse.json({ success: true, imageLinks: simple.imageLinks, videoLinks: mp4.length ? mp4 : simple.videoLinks });
+        }
+      } catch { /* ignore and continue */ }
+    }
+
     // Use KuKuTool helper. They typically render results after a POST submit; try both GET and POST.
     const helperUrl = `https://dy.kukutool.com/xiaohongshu?url=${encodeURIComponent(targetUrl)}`;
     const commonHeaders = {
@@ -88,6 +135,161 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
         // ignore
       }
     }
+    // Try the helper's JSON API directly using cookies if present. This often returns the links before the DOM renders them.
+    try {
+      const cookie = process.env.KUKUTOOL_COOKIES || "";
+      const apiRes = await fetch("https://dy.kukutool.com/api/parse", {
+        method: "POST",
+        headers: {
+          ...commonHeaders,
+          "Content-Type": "application/json",
+          Accept: "application/json, text/plain, */*",
+          Origin: "https://dy.kukutool.com",
+          Cookie: cookie,
+        } as any,
+        body: JSON.stringify({ url: targetUrl }),
+        redirect: "follow",
+      });
+      if (apiRes.ok) {
+        try {
+          const json: any = await apiRes.json();
+          const urls: string[] = [];
+          const walk = (v: any): void => {
+            if (!v) return;
+            if (typeof v === "string" && /https?:\/\//i.test(v)) urls.push(v);
+            else if (Array.isArray(v)) for (const i of v) walk(i);
+            else if (typeof v === "object") for (const k of Object.keys(v)) walk(v[k]);
+          };
+          walk(json);
+          if (urls.length > 0) html += "\n" + urls.join("\n");
+        } catch {
+          const text = await apiRes.text();
+          if (text && /https?:\/\//i.test(text)) html += "\n" + text;
+        }
+      }
+    } catch {
+      // ignore if blocked
+    }
+
+    // Experimental: replicate a captured request using headers/body stored in local file `api_call`.
+    // If present, this can bypass some rate limits/CAPTCHA by mimicking the browser more closely.
+    try {
+      const { readFile } = await import("fs/promises");
+      const raw: string = await readFile("/Users/fengzhiping/a/api_call", "utf8").catch(() => "");
+      if (raw && raw.length > 0) {
+        const lines: string[] = raw.split(/\r?\n/);
+        const getAfter = (key: string): string | undefined => {
+          const idx = lines.findIndex((l) => l.trim().toLowerCase() === key.toLowerCase());
+          if (idx >= 0) {
+            for (let j = idx + 1; j < Math.min(lines.length, idx + 4); j++) {
+              const v = lines[j]?.trim();
+              if (v && !/:$/.test(v) && !/^[A-Za-z0-9_-]+:$/.test(v)) return v;
+            }
+          }
+          return undefined;
+        };
+        const headerCandidates: Array<[string, string | undefined]> = [
+          ["Accept", getAfter("accept")],
+          ["Accept-Encoding", getAfter("accept-encoding")],
+          ["Accept-Language", getAfter("accept-language")],
+          ["Content-Type", getAfter("content-type") || "application/json"],
+          ["Cookie", getAfter("cookie") || process.env.KUKUTOOL_COOKIES || ""],
+          ["Origin", getAfter("origin") || "https://dy.kukutool.com"],
+          ["Referer", getAfter("referer") || "https://dy.kukutool.com/xiaohongshu"],
+          ["Sec-CH-UA", getAfter("sec-ch-ua")],
+          ["Sec-CH-UA-Mobile", getAfter("sec-ch-ua-mobile")],
+          ["Sec-CH-UA-Platform", getAfter("sec-ch-ua-platform")],
+          ["Sec-Fetch-Dest", getAfter("sec-fetch-dest")],
+          ["Sec-Fetch-Mode", getAfter("sec-fetch-mode")],
+          ["Sec-Fetch-Site", getAfter("sec-fetch-site")],
+          ["User-Agent", getAfter("user-agent")],
+        ];
+        const apiHeaders: Record<string, string> = {};
+        for (const [k, v] of headerCandidates) if (v) apiHeaders[k] = v;
+        // Ensure required defaults
+        if (!apiHeaders["User-Agent"]) apiHeaders["User-Agent"] = commonHeaders["User-Agent"];
+        if (!apiHeaders["Accept-Language"]) apiHeaders["Accept-Language"] = commonHeaders["Accept-Language"];
+        if (!apiHeaders["Origin"]) apiHeaders["Origin"] = "https://dy.kukutool.com";
+        if (!apiHeaders["Referer"]) apiHeaders["Referer"] = "https://dy.kukutool.com/xiaohongshu";
+        apiHeaders["Accept"] = apiHeaders["Accept"] || "application/json, text/plain, */*";
+
+        const bodyFields: Record<string, string | number | undefined> = {
+          captchaInput: getAfter("captchaInput"),
+          captchaKey: getAfter("captchaKey"),
+          requestURL: getAfter("requestURL") || targetUrl,
+          salt: getAfter("salt"),
+          sign: getAfter("sign"),
+          ts: Number(getAfter("ts")) || Math.floor(Date.now() / 1000),
+        };
+        // Prune undefined to keep body clean
+        const body: Record<string, string | number> = {};
+        for (const [k, v] of Object.entries(bodyFields)) if (v !== undefined && v !== "") body[k] = v as string | number;
+        if (!body.requestURL) body.requestURL = targetUrl;
+
+        // Send the captured-style request
+        const capturedRes = await fetch("https://dy.kukutool.com/api/parse", {
+          method: "POST",
+          headers: apiHeaders as any,
+          body: JSON.stringify(body),
+          redirect: "follow",
+        });
+        if (capturedRes.ok) {
+          // Prefer JSON; fallback to text
+          let collected: string = "";
+          try {
+            const j: any = await capturedRes.json();
+            const urls: string[] = [];
+            const walk = (v: any): void => {
+              if (!v) return;
+              if (typeof v === "string" && /https?:\/\//i.test(v)) urls.push(v);
+              else if (Array.isArray(v)) for (const i of v) walk(i);
+              else if (typeof v === "object") for (const k of Object.keys(v)) walk(v[k]);
+            };
+            walk(j);
+            if (urls.length > 0) collected = urls.join("\n");
+          } catch {
+            const t = await capturedRes.text();
+            collected = t;
+          }
+          if (collected && /https?:\/\//i.test(collected)) html += "\n" + collected;
+
+          // If we already see candidate mp4 URLs, try verifying with a ranged GET using the captured headers
+          const candidates: string[] = (collected.match(/https?:\/\/[^\s"'<>]+/gi) || []).filter((u) => /\.mp4(\?|$)/i.test(u));
+          const verified: string[] = [];
+          if (candidates.length > 0) {
+            // Build request headers for the media host based on captured values
+            const mediaHeaders: Record<string, string> = {};
+            if (apiHeaders["User-Agent"]) mediaHeaders["User-Agent"] = apiHeaders["User-Agent"];
+            if (apiHeaders["Referer"]) mediaHeaders["Referer"] = apiHeaders["Referer"];
+            mediaHeaders["Accept-Encoding"] = "identity;q=1, *;q=0";
+            mediaHeaders["Range"] = "bytes=0-";
+            // Try a HEAD first, then a tiny GET
+            await Promise.all(
+              candidates.slice(0, 4).map(async (u) => {
+                try {
+                  const h = await fetch(u, { method: "HEAD", headers: mediaHeaders as any, redirect: "follow" });
+                  const finalUrl = h.url || u;
+                  const ct = h.headers.get("content-type") || "";
+                  if (ct.includes("video/mp4") || /\.mp4(\?|$)/i.test(finalUrl)) {
+                    verified.push(finalUrl);
+                    return;
+                  }
+                } catch { /* ignore */ }
+                try {
+                  const g = await fetch(u, { method: "GET", headers: mediaHeaders as any, redirect: "follow" });
+                  const finalUrl = g.url || u;
+                  const ct = g.headers.get("content-type") || "";
+                  if (ct.includes("video/mp4") || /\.mp4(\?|$)/i.test(finalUrl)) verified.push(finalUrl);
+                } catch { /* ignore */ }
+              })
+            );
+            if (verified.length > 0) html += "\n" + verified.join("\n");
+          }
+        }
+      }
+    } catch {
+      // If parsing captured request fails, silently continue with other strategies
+    }
     // Use Playwright (if enabled) to drive the page and surface links reliably.
     // Even if static HTML exists, dynamic buttons (如“下载视频/下载”) often require interaction.
     if (process.env.USE_PLAYWRIGHT === "true") {
@@ -95,14 +297,13 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
         const { chromium } = await import("playwright");
         const browser = await chromium.launch({ headless: true, args: ["--disable-blink-features=AutomationControlled"] });
         const context = await browser.newContext({
+          acceptDownloads: true,
           userAgent:
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
           locale: "zh-CN",
           extraHTTPHeaders: { "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7" },
-          viewport: { width: 414, height: 896 },
-          deviceScaleFactor: 3,
-          isMobile: true,
-          hasTouch: true,
+          viewport: { width: 1280, height: 900 },
+          deviceScaleFactor: 1,
         });
         // Light stealth: hide webdriver flag and set languages/platform
         await context.addInitScript(() => {
@@ -175,8 +376,26 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
             const ct = res.headers()["content-type"] || "";
             // Record text-y responses for URL sweeps
             if (ct.includes("application/json") || ct.includes("text/plain") || ct.includes("text/html")) {
-              const text = await res.text();
-              if (text && /https?:\/\//i.test(text)) networkDump += "\n" + text;
+              // Prefer structured parse for KuKuTool API responses
+              const url = res.url();
+              if (/\/api\/parse(\?|$)/i.test(url) && ct.includes("application/json")) {
+                try {
+                  const j = await res.json();
+                  const walk = (v: any): void => {
+                    if (!v) return;
+                    if (typeof v === "string") { if (/https?:\/\//i.test(v)) networkDump += "\n" + v; return; }
+                    if (Array.isArray(v)) { for (const i of v) walk(i); return; }
+                    if (typeof v === "object") { for (const k of Object.keys(v)) walk(v[k]); }
+                  };
+                  walk(j);
+                } catch {
+                  const text = await res.text();
+                  if (text && /https?:\/\//i.test(text)) networkDump += "\n" + text;
+                }
+              } else {
+                const text = await res.text();
+                if (text && /https?:\/\//i.test(text)) networkDump += "\n" + text;
+              }
             }
             // Also record binary/video responses' URLs if they look like media
             const url = res.url();
@@ -188,14 +407,26 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
           }
         });
         await page.goto("https://dy.kukutool.com/xiaohongshu", { waitUntil: "domcontentloaded" });
-        page.setDefaultTimeout(20000);
+        page.setDefaultTimeout(25000);
+        // Dismiss cookie/consent banners that can block actions
+        try {
+          const consent = page.locator([
+            'button:has-text("同意")', 'button:has-text("同意并继续")', 'button:has-text("接受")',
+            'button:has-text("AGREE")', 'button:has-text("Agree")', 'button:has-text("Accept")',
+            '#L2AGREE', 'div[role="button"]:has-text("同意")',
+          ].join(", "));
+          if (await consent.first().isVisible({ timeout: 1000 }).catch(() => false)) {
+            await consent.first().click({ timeout: 1000 }).catch(() => undefined);
+            await page.waitForTimeout(300);
+          }
+        } catch { /* ignore */ }
         // Try to fill via common selectors
-        const input = page.locator('input[name="url"], input#url, input[type="text"]');
+        const input = page.locator('input[name="url"], input#url, input[type="text"], textarea[name="url"], textarea#url');
         if (await input.first().isVisible()) {
           await input.first().fill(targetUrl);
         } else {
           await page.evaluate((u) => {
-            const el = document.querySelector('input[name="url"], input#url, input[type="text"]') as HTMLInputElement | null;
+            const el = document.querySelector('input[name="url"], input#url, input[type="text"], textarea[name="url"], textarea#url') as HTMLInputElement | HTMLTextAreaElement | null;
             if (el) el.value = u;
           }, targetUrl);
         }
@@ -215,7 +446,24 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
         } else {
           await page.keyboard.press("Enter");
         }
-        await page.waitForTimeout(500);
+        // Explicitly await the parse API call to complete and capture JSON
+        try {
+          const r = await page.waitForResponse((r) => /\/api\/parse(\?|$)/i.test(r.url()), { timeout: 12000 });
+          const ct = r.headers()["content-type"] || "";
+          if (ct.includes("application/json")) {
+            try {
+              const j = await r.json();
+              const walk = (v: any): void => {
+                if (!v) return;
+                if (typeof v === "string") { if (/https?:\/\//i.test(v)) networkDump += "\n" + v; return; }
+                if (Array.isArray(v)) { for (const i of v) walk(i); return; }
+                if (typeof v === "object") { for (const k of Object.keys(v)) walk(v[k]); }
+              };
+              walk(j);
+            } catch {}
+          }
+        } catch { /* ignore; continue with other waits */ }
+        await page.waitForTimeout(900);
         // Wait for results area to appear; allow more time as sites can be slow
         await page.waitForLoadState("domcontentloaded");
         await page.waitForLoadState("networkidle");
@@ -461,6 +709,13 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
       .map((u) => u.replace(/\\\//g, "/"))
       .map((u) => u.replace(/&amp;/gi, "&")) // decode common HTML entity for ampersand
       .map((u) => u.replace(/\\+$/g, "")); // strip trailing backslashes seen in some buttons
+    // Decode any percent-encoded URLs (e.g., https%3A%2F%2F...)
+    normalizedUrls = normalizedUrls.map((u) => {
+      try {
+        if (/%2F|%3A/i.test(u)) return decodeURIComponent(u);
+      } catch {}
+      return u;
+    });
     // Expand helper download endpoints by extracting embedded url query param if present
     const expanded: string[] = [];
     for (const raw of normalizedUrls) {
@@ -474,7 +729,17 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
       } catch { /* ignore */ }
     }
     normalizedUrls = Array.from(new Set([...normalizedUrls, ...expanded]));
-    const imageExt = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
+
+    // Prepare a small debug list of interesting candidates (non-authoritative)
+    const debugUrls: string[] = Array.from(
+      new Set(
+        normalizedUrls
+          .filter((u) => /mp4|xhscdn|kukutool|download|down=|dl=|video/i.test(u))
+          .slice(0, 20)
+      )
+    );
+    // Exclude .gif to avoid picking ad banners; focus on typical XHS formats
+    const imageExt = new Set([".jpg", ".jpeg", ".png", ".webp"]);
     const videoExt = new Set([".mp4", ".mov", ".m3u8", ".mpd"]);
 
     for (const u of normalizedUrls) {
@@ -482,6 +747,7 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
         const parsed = new URL(u);
         if (parsed.protocol !== "http:" && parsed.protocol !== "https:") continue;
         const pathname = parsed.pathname.toLowerCase();
+        const hostname = parsed.hostname.toLowerCase();
         const hasImage = Array.from(imageExt).some((ext) => pathname.endsWith(ext));
         // treat as video when it clearly looks like a playable resource
         const looksLikeHelperVideo = /kukutool/i.test(parsed.hostname) && /(down|download|video|dl|file)/i.test(parsed.pathname + parsed.search);
@@ -493,8 +759,12 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
         const isFromHelper = parsed.hostname.includes("kukutool");
         // Exclude short-share pages like xhslink.com; we only want direct files
         const isShortShare = /(^|\.)xhslink\.com$/i.test(parsed.hostname);
-        if (hasImage && !isShortShare) imageLinks.add(u);
-        if (hasVideo && !isShortShare) {
+        // Recognize XHS media hosts and common ad/tracker hosts; exclude the latter
+        const isXhsMediaHost = /(^|\.)xhscdn\./i.test(hostname) || /xiaohongshu/i.test(hostname);
+        const isAdOrTracker = /(doubleclick|googletag|googlesyndication|adservice|adsystem|taboola|outbrain|travelaudience|google-analytics|gstatic|fundingchoicesmessages)/i.test(hostname) || /\bad[s_\-]?/i.test(pathname);
+
+        if (hasImage && !isShortShare && !isAdOrTracker && isXhsMediaHost) imageLinks.add(u);
+        if (hasVideo && !isShortShare && !isAdOrTracker) {
           if (isFromHelper) videoLinks.add(u);
           else videoLinks.add(u);
         }
@@ -505,7 +775,16 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
 
     if (imageLinks.size === 0 && videoLinks.size === 0) {
       // Provide helpful debug context count to assist troubleshooting
-      return NextResponse.json({ success: true, imageLinks: [], videoLinks: [], error: `No media matched. Scanned ${normalizedUrls.length} URLs.` });
+      return NextResponse.json(
+        {
+          success: false,
+          imageLinks: [],
+          videoLinks: [],
+          error: `No media matched. Scanned ${normalizedUrls.length} URLs.`,
+          debugUrls,
+        },
+        { status: 424 }
+      );
     }
     // Prefer returning only MP4 links when available. If none found, try resolving helper links to their final redirected URL
     let allVideos = Array.from(videoLinks);
@@ -562,7 +841,7 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
       }
     }
 
-    return NextResponse.json({ success: true, imageLinks: Array.from(imageLinks), videoLinks: finalVideos });
+    return NextResponse.json({ success: true, imageLinks: Array.from(imageLinks), videoLinks: finalVideos, debugUrls });
   } catch (e: any) {
     return NextResponse.json({ success: false, imageLinks: [], videoLinks: [], error: e?.message || "Failed to scrape" }, { status: 500 });
   }

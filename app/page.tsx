@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import XHSdownload, { type XHSDownloadResult } from "./components/XHSdownload";
+import XHSdownloadCaptured from "./components/XHSdownloadCaptured";
+import XHSdownloadDirect from "./components/XHSdownloadDirect";
 
 type Platform = "instagram" | "x";
 
@@ -120,17 +122,60 @@ export default function Page(): JSX.Element {
     <main className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-semibold mb-4">XHS → Post-Bridge</h1>
       <div className="space-y-6">
-        <section className="bg-white rounded-lg shadow p-5">
-          <h2 className="font-medium mb-3">1) Extract from Xiaohongshu</h2>
-          <XHSdownload
+        <section className="bg-white rounded-lg shadow p-5 border-2 border-red-500">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="font-medium">1) Extract from Xiaohongshu (Direct Method)</h2>
+            <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full font-semibold">Recommended</span>
+          </div>
+          <p className="text-sm text-gray-600 mb-3">
+            Follows shortened link and extracts video URLs directly from XHS page, then tests with curl-like headers to verify accessibility.
+          </p>
+          <XHSdownloadDirect
             className=""
             onComplete={(r): void => {
               setMedia(r);
-              if (r.success) toast.success("Extracted media");
-              else toast.error(r.error || "Failed to extract");
+              if (r.success) {
+                toast.success(`Extracted ${r.videoLinks.length} video(s), ${r.imageLinks.length} image(s)`);
+              } else {
+                toast.error(r.error || "Failed to extract");
+              }
             }}
+            placeholder="Paste XHS shortened link (e.g., http://xhslink.com/o/7YhgVFfH3N5)"
+            autoFocus={true}
           />
         </section>
+
+        <details className="bg-white rounded-lg shadow p-5">
+          <summary className="font-medium mb-3 cursor-pointer text-gray-600 hover:text-gray-900">
+            Alternative Methods (Click to expand)
+          </summary>
+          <div className="space-y-6 mt-4">
+            <section>
+              <h3 className="font-medium mb-3 text-sm">1a) Standard extractor (via kukutool)</h3>
+              <XHSdownload
+                className=""
+                onComplete={(r): void => {
+                  setMedia(r);
+                  if (r.success) toast.success("Extracted media");
+                  else toast.error(r.error || "Failed to extract");
+                }}
+              />
+            </section>
+
+            <section>
+              <h3 className="font-medium mb-3 text-sm">1b) Captured-only extractor (debug)</h3>
+              <p className="text-xs text-gray-600 mb-3">Uses only the headers/body from <code>api_call</code> to hit kukutool directly.</p>
+              <XHSdownloadCaptured
+                className=""
+                onComplete={(r): void => {
+                  setMedia(r);
+                  if (r.success) toast.success("Extracted (captured)");
+                  else toast.error(r.error || "Failed (captured)");
+                }}
+              />
+            </section>
+          </div>
+        </details>
 
         <section className="bg-white rounded-lg shadow p-5">
           <h2 className="font-medium mb-3">2) Choose destinations</h2>
