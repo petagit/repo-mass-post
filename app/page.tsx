@@ -25,6 +25,18 @@ export default function Page(): JSX.Element {
   const [loadingDest, setLoadingDest] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
   const [destError, setDestError] = useState<string>("");
+  
+  // Bulk schedule settings
+  const [useBulkSchedule, setUseBulkSchedule] = useState<boolean>(false);
+  const [bulkCaption, setBulkCaption] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split("T")[0];
+  });
+  const [startTime, setStartTime] = useState<string>("09:00");
+  const [videosPerDay, setVideosPerDay] = useState<number>(1);
+  const [scheduling, setScheduling] = useState<boolean>(false);
 
   const mediaUrls = useMemo<string[]>(() => {
     if (!media?.success) return [];
@@ -116,7 +128,59 @@ export default function Page(): JSX.Element {
     } finally {
       setPublishing(false);
     }
-  }, [caption, mediaUrls, selected]);
+  }, [caption, mediaUrls, selected, title]);
+
+  const bulkSchedule = useCallback(async (): Promise<void> => {
+    if (mediaUrls.length === 0) {
+      toast.error("No media to schedule");
+      return;
+    }
+    if (selected.length === 0) {
+      toast.error("Select at least one destination");
+      return;
+    }
+    if (!startDate || !startTime) {
+      toast.error("Start date and time are required");
+      return;
+    }
+    if (videosPerDay < 1 || videosPerDay > 24) {
+      toast.error("Videos per day must be between 1 and 24");
+      return;
+    }
+    
+    setScheduling(true);
+    const tId = toast.loading(`Scheduling ${mediaUrls.length} videos via Post-Bridge…`);
+    try {
+      const res = await fetch("/api/post-bridge/bulk-schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mediaUrls,
+          destinations: selected,
+          caption: bulkCaption || caption,
+          title,
+          startDate,
+          startTime,
+          videosPerDay,
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Bulk schedule failed");
+      }
+      const result = await res.json();
+      const successCount = result.scheduled || 0;
+      const totalCount = result.total || mediaUrls.length;
+      toast.success(
+        `Successfully scheduled ${successCount}/${totalCount} videos`,
+        { id: tId }
+      );
+    } catch (e: any) {
+      toast.error(e?.message || "Bulk schedule failed", { id: tId });
+    } finally {
+      setScheduling(false);
+    }
+  }, [mediaUrls, selected, bulkCaption, caption, title, startDate, startTime, videosPerDay]);
 
   return (
     <main className="mx-auto max-w-3xl p-6">
@@ -204,29 +268,123 @@ export default function Page(): JSX.Element {
         </section>
 
         <section className="bg-white rounded-lg shadow p-5">
-          <h2 className="font-medium mb-3">3) Title & Caption</h2>
-          <input
-            type="text"
-            value={title}
-            onChange={(e): void => setTitle(e.target.value)}
-            className="w-full mb-3 px-3 py-2 border rounded-lg"
-            placeholder="Enter a title (optional)"
-          />
-          <textarea
-            value={caption}
-            onChange={(e): void => setCaption(e.target.value)}
-            className="w-full min-h-24 resize-y px-3 py-2 border rounded-lg"
-            placeholder="Write an optional caption…"
-          />
-          <div className="mt-4">
-            <button
-              onClick={(): void => void publish()}
-              disabled={publishing}
-              className="px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400"
-            >
-              {publishing ? "Posting…" : "Post via Post-Bridge"}
-            </button>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-medium">3) Post Settings</h2>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useBulkSchedule}
+                onChange={(e): void => setUseBulkSchedule(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <span className="text-sm">Bulk Schedule</span>
+            </label>
           </div>
+
+          {!useBulkSchedule ? (
+            <>
+              <input
+                type="text"
+                value={title}
+                onChange={(e): void => setTitle(e.target.value)}
+                className="w-full mb-3 px-3 py-2 border rounded-lg"
+                placeholder="Enter a title (optional)"
+              />
+              <textarea
+                value={caption}
+                onChange={(e): void => setCaption(e.target.value)}
+                className="w-full min-h-24 resize-y px-3 py-2 border rounded-lg"
+                placeholder="Write an optional caption…"
+              />
+              <div className="mt-4">
+                <button
+                  onClick={(): void => void publish()}
+                  disabled={publishing}
+                  className="px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400"
+                >
+                  {publishing ? "Posting…" : "Post via Post-Bridge"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Bulk Caption</label>
+                  <textarea
+                    value={bulkCaption}
+                    onChange={(e): void => setBulkCaption(e.target.value)}
+                    className="w-full min-h-24 resize-y px-3 py-2 border rounded-lg"
+                    placeholder="Enter a caption to apply to all videos..."
+                    maxLength={2200}
+                  />
+                  <div className="text-xs text-gray-500 mt-1 text-right">
+                    {bulkCaption.length}/2200
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Start Date</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e): void => setStartDate(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Start Time</label>
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={(e): void => setStartTime(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Videos per day (1-24)
+                  </label>
+                  <select
+                    value={videosPerDay}
+                    onChange={(e): void => setVideosPerDay(Number(e.target.value))}
+                    className="w-full px-3 py-2 border rounded-lg"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => i + 1).map((num) => (
+                      <option key={num} value={num}>
+                        {num}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {mediaUrls.length > 0 && (
+                      <>
+                        {mediaUrls.length} video{mediaUrls.length !== 1 ? "s" : ""} will be scheduled over{" "}
+                        {Math.ceil(mediaUrls.length / videosPerDay)} day
+                        {Math.ceil(mediaUrls.length / videosPerDay) !== 1 ? "s" : ""}
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                <div className="mt-4">
+                  <button
+                    onClick={(): void => void bulkSchedule()}
+                    disabled={scheduling || mediaUrls.length === 0}
+                    className="px-5 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400"
+                  >
+                    {scheduling
+                      ? `Scheduling ${mediaUrls.length} videos…`
+                      : `Schedule ${mediaUrls.length} video${mediaUrls.length !== 1 ? "s" : ""} via Post-Bridge`}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </section>
 
         {mediaUrls.length > 0 && (
