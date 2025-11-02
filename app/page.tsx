@@ -505,33 +505,76 @@ export default function Page() {
                         <div className="text-xs text-gray-500">{item.time}</div>
                       </div>
                     </div>
-                    {/* Thumbnail */}
-                    <div className="mt-2 mb-2 rounded overflow-hidden bg-gray-100 w-20 h-12 flex-shrink-0">
-                      {isVideo ? (
-                        <video
-                          src={item.mediaUrl}
-                          className="w-full h-full object-cover"
-                          preload="metadata"
-                          muted
-                          playsInline
-                          onLoadedMetadata={(e): void => {
-                            // Seek to first frame for thumbnail
-                            const video = e.currentTarget;
-                            video.currentTime = 0.1;
-                          }}
-                        />
-                      ) : isImage ? (
-                        <img
-                          src={item.mediaUrl}
-                          alt={`Preview ${item.index}`}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                          Preview unavailable
-                        </div>
-                      )}
+                    {/* Thumbnail with Preview Icon */}
+                    <div className="mt-2 mb-2 flex items-center gap-2">
+                      <div className="rounded overflow-hidden bg-gray-100 w-20 h-12 flex-shrink-0 relative group">
+                        {isVideo ? (
+                          <video
+                            src={item.mediaUrl}
+                            className="w-full h-full object-cover"
+                            preload="metadata"
+                            muted
+                            playsInline
+                            onLoadedMetadata={(e): void => {
+                              // Seek to first frame for thumbnail
+                              const video = e.currentTarget;
+                              video.currentTime = 0.1;
+                            }}
+                          />
+                        ) : isImage ? (
+                          <img
+                            src={item.mediaUrl}
+                            alt={`Preview ${item.index}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                            Preview unavailable
+                          </div>
+                        )}
+                        {/* Play icon overlay for videos */}
+                        {isVideo && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg
+                              className="w-6 h-6 text-white"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      {/* Preview Icon Button */}
+                      <button
+                        onClick={(): void => {
+                          window.open(item.mediaUrl, "_blank", "noopener,noreferrer");
+                        }}
+                        className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600 hover:text-blue-700 transition-colors flex-shrink-0"
+                        title="Open video/image in new tab"
+                        aria-label="Preview media"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
+                        </svg>
+                      </button>
                     </div>
                     {/* Editable Caption */}
                     <div className="mt-2">
