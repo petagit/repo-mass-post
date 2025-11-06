@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 interface DestinationDto {
   id: string;
-  platform: "instagram" | "x";
+  platform: "instagram" | "x" | "pinterest";
   handle: string;
   displayName?: string;
   avatarUrl?: string;
@@ -17,7 +17,7 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json(
       {
         error: "POSTBRIDGE_API_KEY missing. Create .env.local with POSTBRIDGE_API_KEY and restart.",
-        platforms: { instagram: [], x: [] },
+        platforms: { instagram: [], x: [], pinterest: [] },
         defaults: [],
       },
       { status: 500 }
@@ -56,7 +56,14 @@ export async function GET(): Promise<NextResponse> {
           const handleRaw: string | undefined = raw.handle || raw.username || raw.name || raw.screen_name;
           if (!id || !platformRaw || !handleRaw) return null;
           const plat = platformRaw.toLowerCase();
-          const normalizedPlatform = plat.includes("insta") ? "instagram" : plat.includes("twitter") || plat === "x" ? "x" : undefined;
+          let normalizedPlatform: "instagram" | "x" | "pinterest" | undefined;
+          if (plat.includes("insta")) {
+            normalizedPlatform = "instagram";
+          } else if (plat.includes("twitter") || plat === "x") {
+            normalizedPlatform = "x";
+          } else if (plat.includes("pinterest")) {
+            normalizedPlatform = "pinterest";
+          }
           if (!normalizedPlatform) return null;
           return {
             id: String(id),
@@ -82,6 +89,7 @@ export async function GET(): Promise<NextResponse> {
 
     const instagram = list.filter((d) => d.platform === "instagram");
     const x = list.filter((d) => d.platform === "x");
+    const pinterest = list.filter((d) => d.platform === "pinterest");
 
     // Defaults: prefer handles from env, fall back to the first available
     const defaultIg = process.env.POSTBRIDGE_DEFAULT_IG || "costights";
@@ -93,7 +101,7 @@ export async function GET(): Promise<NextResponse> {
     const xDefault = x.find((d) => d.handle.toLowerCase() === defaultX.toLowerCase());
     if (xDefault) defaults.push(xDefault.id);
 
-    return NextResponse.json({ platforms: { instagram, x }, defaults, error: instagram.length + x.length > 0 ? undefined : lastErrorText });
+    return NextResponse.json({ platforms: { instagram, x, pinterest }, defaults, error: instagram.length + x.length + pinterest.length > 0 ? undefined : lastErrorText });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Unexpected error" }, { status: 500 });
   }

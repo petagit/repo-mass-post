@@ -65,6 +65,32 @@ export default function ExtractImagesPage(): JSX.Element {
     }
   }, [urls]);
 
+  const isImageLink = useCallback((url: string): boolean => {
+    const urlLower = url.toLowerCase();
+    
+    // Check for video-related patterns
+    if (
+      /sns-video-/i.test(urlLower) ||
+      /\.(mp4|mov|m3u8|mpd|webm|avi|mkv|flv|wmv)(\?|$)/i.test(urlLower) ||
+      /\/video\//i.test(urlLower) ||
+      /video/i.test(urlLower.split('/').pop() || '')
+    ) {
+      return false;
+    }
+    
+    // Check for image-related patterns
+    if (
+      /\.(jpg|jpeg|png|webp|gif|bmp|svg)(\?|$)/i.test(urlLower) ||
+      /xhscdn/i.test(urlLower) ||
+      /image/i.test(urlLower)
+    ) {
+      return true;
+    }
+    
+    // Default to true if no clear video indicators (to be safe)
+    return true;
+  }, []);
+
   const copyToClipboard = useCallback(async (text: string, key: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
@@ -85,7 +111,10 @@ export default function ExtractImagesPage(): JSX.Element {
     const allLinks: string[] = [];
     result.posts.forEach((post) => {
       post.images.forEach((imageUrl) => {
-        allLinks.push(imageUrl);
+        // Only include actual image links, not video links
+        if (isImageLink(imageUrl)) {
+          allLinks.push(imageUrl);
+        }
       });
     });
 
@@ -97,12 +126,12 @@ export default function ExtractImagesPage(): JSX.Element {
     try {
       await navigator.clipboard.writeText(allLinks.join("\n"));
       setCopiedKey("all");
-      toast.success(`Copied ${allLinks.length} link(s) to clipboard!`);
+      toast.success(`Copied ${allLinks.length} image link(s) to clipboard!`);
       setTimeout(() => setCopiedKey(null), 2000);
     } catch (err) {
       toast.error("Failed to copy links");
     }
-  }, [result]);
+  }, [result, isImageLink]);
 
   const downloadImages = useCallback(async (): Promise<void> => {
     if (!result || !result.success) {
@@ -380,8 +409,12 @@ https://xhslink.com/..."
                 </div>
 
                 {post.images.length > 0 ? (() => {
-                  // Filter out failed images
+                  // Filter out failed images and video links
                   const visibleImages = post.images.filter((imageUrl, imgIndex) => {
+                    // Skip video links
+                    if (!isImageLink(imageUrl)) {
+                      return false;
+                    }
                     const imageKey = `${postIndex}-${imgIndex}-${imageUrl}`;
                     return !failedImages.has(imageKey);
                   });
@@ -393,8 +426,8 @@ https://xhslink.com/..."
                           const imageKey = `${postIndex}-${imgIndex}-${imageUrl}`;
                           const hasFailed = failedImages.has(imageKey);
                           
-                          // Skip rendering failed images
-                          if (hasFailed) {
+                          // Skip rendering failed images and video links
+                          if (hasFailed || !isImageLink(imageUrl)) {
                             return null;
                           }
                           
@@ -495,9 +528,30 @@ https://xhslink.com/..."
 
           <div className="max-h-96 overflow-y-auto border rounded-lg">
             <div className="divide-y">
-              {result.posts.map((post, postIndex) =>
-                post.images.map((imageUrl, imgIndex) => {
-                  const linkKey = `post-${postIndex}-img-${imgIndex}`;
+              {(() => {
+                // Collect all image links with their metadata
+                const allImageLinks: Array<{
+                  url: string;
+                  postIndex: number;
+                  imgIndex: number;
+                  postTitle?: string;
+                }> = [];
+                
+                result.posts.forEach((post, postIndex) => {
+                  post.images.forEach((imageUrl, imgIndex) => {
+                    if (isImageLink(imageUrl)) {
+                      allImageLinks.push({
+                        url: imageUrl,
+                        postIndex,
+                        imgIndex,
+                        postTitle: post.title,
+                      });
+                    }
+                  });
+                });
+
+                return allImageLinks.map((item, index) => {
+                  const linkKey = `post-${item.postIndex}-img-${item.imgIndex}`;
                   const isCopied = copiedKey === linkKey;
 
                   return (
@@ -506,21 +560,17 @@ https://xhslink.com/..."
                       className="p-3 hover:bg-gray-50 transition-colors flex items-start gap-3"
                     >
                       <div className="flex-shrink-0 w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-600 font-medium">
-                        {result.posts
-                          .slice(0, postIndex)
-                          .reduce((sum, p) => sum + p.images.length, 0) +
-                          imgIndex +
-                          1}
+                        {index + 1}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs text-gray-500 mb-1">
-                          Post {postIndex + 1}, Image {imgIndex + 1}
-                          {post.title && (
-                            <span className="ml-2">({post.title})</span>
+                          Post {item.postIndex + 1}, Image {item.imgIndex + 1}
+                          {item.postTitle && (
+                            <span className="ml-2">({item.postTitle})</span>
                           )}
                         </div>
                         <a
-                          href={imageUrl}
+                          href={item.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all"
@@ -528,13 +578,13 @@ https://xhslink.com/..."
                             e.stopPropagation();
                           }}
                         >
-                          {imageUrl}
+                          {item.url}
                         </a>
                       </div>
                       <button
                         onClick={(e): void => {
                           e.stopPropagation();
-                          void copyToClipboard(imageUrl, linkKey);
+                          void copyToClipboard(item.url, linkKey);
                         }}
                         className="flex-shrink-0 px-3 py-1.5 text-sm rounded bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
                         title="Copy link"
@@ -577,17 +627,24 @@ https://xhslink.com/..."
                       </button>
                     </div>
                   );
-                })
-              )}
+                });
+              })()}
             </div>
           </div>
 
           <div className="mt-3 text-xs text-gray-500 text-center">
-            {result.posts.reduce((sum, post) => sum + post.images.length, 0)} total image
-            {result.posts.reduce((sum, post) => sum + post.images.length, 0) !== 1
+            {result.posts.reduce((sum, post) => {
+              const imageCount = post.images.filter((url) => isImageLink(url)).length;
+              return sum + imageCount;
+            }, 0)}{" "}
+            image
+            {result.posts.reduce((sum, post) => {
+              const imageCount = post.images.filter((url) => isImageLink(url)).length;
+              return sum + imageCount;
+            }, 0) !== 1
               ? "s"
               : ""}{" "}
-            extracted
+            listed
           </div>
         </section>
       )}

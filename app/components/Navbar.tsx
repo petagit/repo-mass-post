@@ -14,6 +14,7 @@ export default function Navbar(): JSX.Element {
 
   const navItems: NavItem[] = [
     { href: "/", label: "Home" },
+    { href: "/post", label: "Post" },
     { href: "/extract-images", label: "Extract Images" },
     { href: "https://transition-video.vercel.app/", label: "Transition Video", external: true },
   ];
