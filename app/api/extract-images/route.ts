@@ -98,55 +98,52 @@ async function extractImagesFromUrl(targetUrl: string): Promise<{
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : undefined;
 
-  // Helper function to decode Unicode escape sequences
-  const decodeUnicode = (str: string): string => {
-    return str.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-  };
-
-  // Helper function to check if URL is an image URL (more lenient for XHS)
-  const isImageUrl = (url: string): boolean => {
-    const lowerUrl = url.toLowerCase();
-    // Standard image extensions
-    if (/\.(jpg|jpeg|png|webp|gif|bmp|svg)/i.test(url)) {
-      return true;
-    }
-    // XHS-specific patterns: xhscdn.com URLs with image indicators
-    if (/xhscdn\./i.test(url)) {
-      // Check for webp, image indicators, or typical XHS image patterns
-      if (/(webp|pic|image|img|photo|_dft_|_wlteh_)/i.test(url)) {
-        return true;
-      }
-      // If it's from xhscdn and doesn't look like a video, treat as image
-      if (!/\.(mp4|mov|m3u8|mpd|video)/i.test(url)) {
-        return true;
-      }
-    }
-    return false;
-  };
-
   // Look for images in script tags (common for XHS and other platforms)
   const scriptMatches = html.matchAll(/<script[^>]*>(.*?)<\/script>/gis);
   for (const match of scriptMatches) {
     const scriptContent = match[1];
     
+    // Look for xhscdn.com image URLs (XHS specific - may not have file extensions)
+    // Pattern matches URLs like: https://sns-webpic-qc.xhscdn.com/.../.../..._webp_3
+    // Exclude video URLs (.mp4) and common non-image patterns
+    const xhsImageMatches = scriptContent.matchAll(/https?:\/\/[^"'\s<>]*xhscdn[^"'\s<>]*/gi);
+    for (const xhsMatch of xhsImageMatches) {
+      let cleanUrl = xhsMatch[0].replace(/\\\//g, "/").replace(/&amp;/g, "&");
+      // Decode unicode escapes like \u0021 (!)
+      cleanUrl = cleanUrl.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+      // Exclude videos and common non-image patterns
+      const cleanUrlLower = cleanUrl.toLowerCase();
+      if (!cleanUrl.includes(".mp4") && 
+          !cleanUrlLower.includes("logo") && 
+          !cleanUrlLower.includes("icon") && 
+          !cleanUrlLower.includes("avatar") &&
+          !cleanUrlLower.includes("xiaohongshu") &&
+          !cleanUrlLower.includes("小红书") &&
+          !cleanUrl.match(/\/video\//i) &&
+          !cleanUrl.match(/\/(static|assets|common|components|widgets)\//i)) {
+        imageLinks.add(cleanUrl);
+      }
+    }
+    
     // Look for JSON objects containing image URLs
     try {
-      // First, decode any Unicode escape sequences
-      const decodedContent = decodeUnicode(scriptContent);
-      
-      const jsonMatches = decodedContent.matchAll(/"url"\s*:\s*"([^"]+)"/gi);
+      const jsonMatches = scriptContent.matchAll(/"url"\s*:\s*"([^"]+)"/gi);
       for (const jsonMatch of jsonMatches) {
-        let url = jsonMatch[1]
-          .replace(/\\\//g, "/")  // Replace escaped slashes
-          .replace(/\\u0021/g, "!")  // Replace \u0021 with !
-          .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16))); // Decode other Unicode escapes
-        // Try to decode URI component if it looks encoded, but preserve if it fails
-        try {
-          url = decodeURIComponent(url);
-        } catch {
-          // URL might not be encoded, keep as is
-        }
-        if (isImageUrl(url) && !url.includes("logo") && !url.includes("icon") && !url.includes("avatar")) {
+        let url = jsonMatch[1].replace(/\\\//g, "/");
+        // Decode unicode escapes
+        url = url.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+        // Check for xhscdn URLs (may not have extensions) or URLs with image extensions
+        const urlLower = url.toLowerCase();
+        const isXhsCdn = /xhscdn/i.test(url);
+        const hasImageExt = /\.(jpg|jpeg|png|webp|gif)/i.test(url);
+        const isExcluded = urlLower.includes("logo") || 
+                          urlLower.includes("icon") || 
+                          urlLower.includes("avatar") ||
+                          urlLower.includes("xiaohongshu") ||
+                          urlLower.includes("小红书") ||
+                          /\/static\/|\/assets\/|\/common\/|\/components\/|\/widgets\//i.test(url);
+        
+        if ((isXhsCdn || hasImageExt) && !isExcluded) {
           imageLinks.add(url);
         }
       }
@@ -156,48 +153,23 @@ async function extractImagesFromUrl(targetUrl: string): Promise<{
         /"image"\s*:\s*"([^"]+)"/gi,
         /"imageUrl"\s*:\s*"([^"]+)"/gi,
         /"picUrl"\s*:\s*"([^"]+)"/gi,
-        /"pic"\s*:\s*"([^"]+)"/gi,
         /"src"\s*:\s*"([^"]+)"/gi,
         /"cover"\s*:\s*"([^"]+)"/gi,
         /"thumbnail"\s*:\s*"([^"]+)"/gi,
       ];
       
       for (const pattern of imagePatterns) {
-        const matches = decodedContent.matchAll(pattern);
+        const matches = scriptContent.matchAll(pattern);
         for (const m of matches) {
-          let url = m[1]
-            .replace(/\\\//g, "/")  // Replace escaped slashes
-            .replace(/\\u0021/g, "!")  // Replace \u0021 with !
-            .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16))); // Decode other Unicode escapes
-          // Try to decode URI component if it looks encoded
-          try {
-            url = decodeURIComponent(url);
-          } catch {
-            // URL might not be encoded, keep as is
+          let url = m[1].replace(/\\\//g, "/");
+          // Decode unicode escapes
+          url = url.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+          if (url.startsWith("http")) {
+            // Accept xhscdn URLs or URLs with image extensions
+            if (/xhscdn/i.test(url) || /\.(jpg|jpeg|png|webp|gif)/i.test(url)) {
+              imageLinks.add(url);
+            }
           }
-          if (url.startsWith("http") && isImageUrl(url)) {
-            imageLinks.add(url);
-          }
-        }
-      }
-
-      // Look for xhscdn.com URLs directly (common pattern for XHS images)
-      const xhsImagePattern = /https?:\/\/[^"'\s<>]*xhscdn[^"'\s<>]+(?:\/|!)[^"'\s<>]*/gi;
-      const xhsMatches = decodedContent.matchAll(xhsImagePattern);
-      for (const xhsMatch of xhsMatches) {
-        let url = xhsMatch[0]
-          .replace(/\\\//g, "/")  // Replace escaped slashes
-          .replace(/\\u0021/g, "!")  // Replace \u0021 with !
-          .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16))); // Decode other Unicode escapes
-        // Try to decode URI component if it looks encoded
-        try {
-          url = decodeURIComponent(url);
-        } catch {
-          // URL might not be encoded, keep as is
-        }
-        // Exclude video files
-        if (!/\.(mp4|mov|m3u8|mpd|video)/i.test(url) && !url.includes("logo") && !url.includes("icon") && !url.includes("avatar")) {
-          imageLinks.add(url);
         }
       }
     } catch {
@@ -208,116 +180,305 @@ async function extractImagesFromUrl(targetUrl: string): Promise<{
   // Look for <img> tags
   const imgMatches = html.matchAll(/<img[^>]+src=["'](https?:\/\/[^"'\s<>]+)["']/gi);
   for (const match of imgMatches) {
-    let url = match[1]
-      .replace(/\\\//g, "/")
-      .replace(/&amp;/g, "&")
-      .replace(/\\u0021/g, "!")
-      .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-    try {
-      url = decodeURIComponent(url);
-    } catch {
-      // Keep as is if decode fails
-    }
-    if (isImageUrl(url) && !url.includes("logo") && !url.includes("icon") && !url.includes("avatar")) {
+    let url = match[1].replace(/\\\//g, "/").replace(/&amp;/g, "&");
+    // Decode unicode escapes
+    url = url.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    // Accept xhscdn URLs (may not have extensions) or URLs with image extensions
+    const urlLower = url.toLowerCase();
+    const isXhsCdn = /xhscdn/i.test(url);
+    const hasImageExt = /\.(jpg|jpeg|png|webp|gif)/i.test(url);
+    const isExcluded = urlLower.includes("logo") || 
+                      urlLower.includes("icon") || 
+                      urlLower.includes("avatar") ||
+                      urlLower.includes("xiaohongshu") ||
+                      urlLower.includes("小红书") ||
+                      /\/static\/|\/assets\/|\/common\/|\/components\/|\/widgets\//i.test(url);
+    
+    if ((isXhsCdn || hasImageExt) && !isExcluded) {
       imageLinks.add(url);
     }
   }
 
   // Look for data attributes
-  const dataAttrMatches = html.matchAll(/(?:data-src|data-url|data-image|data-original|data-lazy-src)=["'](https?:\/\/[^"'\s<>]+)["']/gi);
+  const dataAttrMatches = html.matchAll(/(?:data-src|data-url|data-image|data-original)=["'](https?:\/\/[^"'\s<>]+(?:\.(jpg|jpeg|png|webp|gif)|xhscdn[^"'\s<>]*)[^"'\s<>]*)["']/gi);
   for (const match of dataAttrMatches) {
-    let url = match[1]
-      .replace(/\\\//g, "/")
-      .replace(/&amp;/g, "&")
-      .replace(/\\u0021/g, "!")
-      .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-    try {
-      url = decodeURIComponent(url);
-    } catch {
-      // Keep as is if decode fails
-    }
-    if (isImageUrl(url) && !url.includes("logo") && !url.includes("icon") && !url.includes("avatar")) {
+    let url = match[1].replace(/\\\//g, "/").replace(/&amp;/g, "&");
+    // Decode unicode escapes
+    url = url.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    const urlLower = url.toLowerCase();
+    const isExcluded = urlLower.includes("logo") || 
+                      urlLower.includes("icon") || 
+                      urlLower.includes("avatar") ||
+                      urlLower.includes("xiaohongshu") ||
+                      urlLower.includes("小红书") ||
+                      /\/static\/|\/assets\/|\/common\/|\/components\/|\/widgets\//i.test(url);
+    
+    if (!isExcluded) {
       imageLinks.add(url);
     }
   }
 
-  // Generic URL sweep - look for xhscdn URLs specifically (they often don't have extensions)
-  const xhsCdnMatches = html.matchAll(/https?:\/\/[^"'\s<>]*xhscdn[^"'\s<>]+(?:\/|!)[^"'\s<>]*/gi);
-  for (const match of xhsCdnMatches) {
-    let url = match[0]
-      .replace(/\\\//g, "/")
-      .replace(/&amp;/g, "&")
-      .replace(/\\u0021/g, "!")
-      .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-    try {
-      url = decodeURIComponent(url);
-    } catch {
-      // Keep as is if decode fails
-    }
-    // Exclude videos and common non-image patterns
-    if (!/\.(mp4|mov|m3u8|mpd|video)/i.test(url) && !url.includes("logo") && !url.includes("icon") && !url.includes("avatar")) {
-      imageLinks.add(url);
-    }
-  }
-
-  // Generic URL sweep for image URLs with extensions
-  const allUrlMatches = html.match(/https?:\/\/[^\s"'<>]+\.(jpg|jpeg|png|webp|gif|bmp)[^\s"'<>]*/gi) || [];
+  // Generic URL sweep for image URLs (including xhscdn URLs without extensions)
+  const allUrlMatches = html.match(/https?:\/\/[^\s"'<>]+(?:xhscdn[^\s"'<>]*|\.(jpg|jpeg|png|webp|gif)[^\s"'<>]*)/gi) || [];
   for (const urlMatch of allUrlMatches) {
-    let cleanUrl = urlMatch
-      .replace(/\\\//g, "/")
-      .replace(/&amp;/g, "&")
-      .replace(/\\u0021/g, "!")
-      .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-    try {
-      cleanUrl = decodeURIComponent(cleanUrl);
-    } catch {
-      // Keep as is if decode fails
+    let cleanUrl = urlMatch.replace(/\\\//g, "/").replace(/&amp;/g, "&");
+    // Decode unicode escapes
+    cleanUrl = cleanUrl.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    const cleanUrlLower = cleanUrl.toLowerCase();
+    
+    // Exclude non-image file types
+    if (/\.(js|css|ico|json|html|xml|txt|woff|woff2|ttf|eot|map)(\?|$)/i.test(cleanUrlLower)) {
+      continue;
     }
-    if (!cleanUrl.includes("logo") && !cleanUrl.includes("icon") && !cleanUrl.includes("avatar")) {
+    
+    const isExcluded = cleanUrlLower.includes("logo") || 
+                      cleanUrlLower.includes("icon") || 
+                      cleanUrlLower.includes("avatar") ||
+                      cleanUrlLower.includes("xiaohongshu") ||
+                      cleanUrlLower.includes("小红书") ||
+                      /\/static\/|\/assets\/|\/common\/|\/components\/|\/widgets\//i.test(cleanUrl);
+    
+    if (!isExcluded) {
       imageLinks.add(cleanUrl);
     }
   }
 
-  // Filter out small or invalid images (common placeholder sizes) and validate URLs
-  const filteredImages = Array.from(imageLinks).filter((url) => {
-    // Remove common placeholder patterns
-    if (url.match(/\/(?:placeholder|logo|icon|avatar|thumb|1x1|spacer)/i)) {
+  // Filter out non-post images (logos, UI elements, placeholders) and validate URLs
+  // Also filter out low-resolution thumbnails (prefer high-res images with w/720)
+  const allFiltered = Array.from(imageLinks).filter((url) => {
+    const urlLower = url.toLowerCase();
+    
+    // Filter out XHS low-res preview images (nd_prv_ = preview, nd_dft_ = default/high-res)
+    // Pattern: .../1040g...!nd_prv_... = low res thumbnail
+    // Pattern: .../1040g...!nd_dft_... = high res image
+    if (/!nd_prv_/i.test(urlLower)) {
+      return false; // Exclude preview/thumbnail versions
+    }
+    
+    // Filter out low-resolution thumbnails (w/120, w/200, etc.) and prefer high-res (w/720, w/1080, etc.)
+    // Check for imageView2 parameters or similar sizing parameters
+    if (/imageview2|imageview|imagemogr2/i.test(urlLower)) {
+      // Extract width parameter if present
+      const widthMatch = urlLower.match(/[\/\?&]w\/(\d+)[\/\?&]/);
+      if (widthMatch) {
+        const width = parseInt(widthMatch[1], 10);
+        // Exclude low-res thumbnails (w/120, w/200, w/300, w/400, w/500, w/600)
+        if (width < 720) {
+          return false;
+        }
+      } else {
+        // No width parameter found, but has imageView2 - might be thumbnail
+        // Only allow if it's clearly a high-res pattern or xhscdn (which we'll handle separately)
+        if (!/xhscdn/i.test(urlLower)) {
+          return false;
+        }
+      }
+    }
+    
+    // Also check for common thumbnail patterns in URLs
+    if (/thumbnail|thumb|small|mini|preview/i.test(urlLower) && !/w\/720|w\/1080|w\/1440|w\/1920/.test(urlLower)) {
       return false;
     }
-    // Validate URL format
+    
+    // Remove common non-post image patterns
+    const excludePatterns = [
+      /logo/i,
+      /icon/i,
+      /avatar/i,
+      /placeholder/i,
+      /thumb/i,
+      /1x1/i,
+      /spacer/i,
+      /brand/i,
+      /watermark/i,
+      /badge/i,
+      /button/i,
+      /\/ui\//i, // UI folder paths
+      /-ui-/i, // UI in path separators
+      /_ui_/i, // UI in underscores
+      /widget/i,
+      /ad/i,
+      /banner/i,
+      /header/i,
+      /footer/i,
+      /nav/i,
+      /menu/i,
+      /sidebar/i,
+      /decoration/i,
+      /ornament/i,
+      /frame/i,
+      /border/i,
+      /background/i,
+      /pattern/i,
+      /texture/i,
+      /sprite/i,
+      /emoji/i,
+      /sticker/i,
+      /xiaohongshu/i, // Platform name in URL often indicates branding
+      /小红书/i, // Chinese name for Xiaohongshu
+      /xhs-logo/i,
+      /xhs_logo/i,
+      /xhslogo/i,
+      /app-icon/i,
+      /app_icon/i,
+      /appicon/i,
+      /default-avatar/i,
+      /default_avatar/i,
+      /defaultavatar/i,
+      /empty/i,
+      /loading/i,
+      /spinner/i,
+      /error/i,
+      /404/i,
+      /no-image/i,
+      /noimage/i,
+    ];
+    
+    // Check if URL matches any exclusion pattern
+    for (const pattern of excludePatterns) {
+      if (pattern.test(urlLower)) {
+        return false;
+      }
+    }
+    
+    // Exclude common XHS UI element paths
+    const xhsUIPaths = [
+      /\/static\//i,
+      /\/assets\//i,
+      /\/images\/logo/i,
+      /\/images\/icon/i,
+      /\/images\/ui/i,
+      /\/img\/logo/i,
+      /\/img\/icon/i,
+      /\/img\/ui/i,
+      /\/common\//i,
+      /\/components\//i,
+      /\/widgets\//i,
+    ];
+    
+    for (const pathPattern of xhsUIPaths) {
+      if (pathPattern.test(urlLower)) {
+        return false;
+      }
+    }
+    
+    // Exclude very small image identifiers (likely thumbnails/icons)
+    // XHS post images typically have longer identifiers
+    // Check if URL has suspiciously short path segments that might indicate UI elements
     try {
       const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split("/").filter((p) => p && p.length > 0);
+      
+      // Exclude URLs with very short final segments (likely icons/logos)
+      if (pathParts.length > 0) {
+        const lastPart = pathParts[pathParts.length - 1];
+        // If last part is very short and doesn't look like a content image ID, exclude it
+        if (lastPart.length < 10 && !/\.(jpg|jpeg|png|webp|gif)/i.test(lastPart)) {
+          // But allow if it's clearly an xhscdn content image (they have specific patterns)
+          if (!/xhscdn/i.test(urlObj.hostname) || !/\d{12}/.test(url)) {
+            return false;
+          }
+        }
+      }
+      
       // Ensure it's http or https
       if (!["http:", "https:"].includes(urlObj.protocol)) {
         return false;
       }
-      // For xhscdn URLs, be more lenient (they often don't have extensions)
-      const isXhsCdn = /xhscdn\./i.test(urlObj.hostname);
-      if (isXhsCdn) {
-        // Check for image indicators or exclude video patterns
-        if (/\.(mp4|mov|m3u8|mpd|video)/i.test(urlObj.pathname)) {
-          return false; // Exclude videos
+      
+      // For xhscdn URLs, accept them even without file extensions
+      // But exclude if they match UI patterns
+      if (/xhscdn/i.test(urlObj.hostname)) {
+        // XHS CDN URLs are valid even without extensions
+        // But exclude if they're clearly UI elements (check path patterns)
+        const pathname = urlObj.pathname.toLowerCase();
+        if (/\/logo|\/icon|\/ui|\/static|\/common/i.test(pathname)) {
+          return false;
         }
-        // XHS images often have patterns like webp, pic, image, or special characters
-        if (/(webp|pic|image|img|photo|_dft_|_wlteh_|!)/i.test(urlObj.pathname) || urlObj.pathname.length > 20) {
-          return true; // Likely an image
-        }
-        // If it's from xhscdn and doesn't look like a video, include it
         return true;
       }
-      // For other URLs, ensure it looks like an image URL
-      if (isImageUrl(urlObj.pathname)) {
-        return true;
+      
+      // Other URLs must have image extensions
+      if (!/\.(jpg|jpeg|png|webp|gif)/i.test(urlObj.pathname)) {
+        return false;
       }
-      return false;
+      
+      // Exclude non-image file types that might have been incorrectly matched
+      const pathnameLower = urlObj.pathname.toLowerCase();
+      if (/\.(js|css|ico|json|html|xml|txt|woff|woff2|ttf|eot|map|svg)(\?|$)/i.test(pathnameLower)) {
+        // SVG might be an image, but often it's an icon/logo, so exclude it
+        if (pathnameLower.includes("logo") || pathnameLower.includes("icon") || pathnameLower.includes("sprite")) {
+          return false;
+        }
+        // Exclude all non-image extensions except potentially valid SVGs
+        if (!pathnameLower.endsWith(".svg")) {
+          return false;
+        }
+      }
+      
+      return true;
     } catch {
       // Invalid URL format
       return false;
     }
   });
+  
+  // Deduplicate: if we have both low-res and high-res versions of the same image, keep only high-res
+  // Group images by base URL (without size parameters and variant identifiers)
+  const imageGroups = new Map<string, string[]>();
+  
+  for (const url of allFiltered) {
+    // Extract base URL without size parameters and variant identifiers
+    let baseUrl = url;
+    // Remove imageView2 parameters to get base URL
+    baseUrl = baseUrl.replace(/[?&]imageview2\/[^&]*/gi, "");
+    baseUrl = baseUrl.replace(/[?&]imageview\/[^&]*/gi, "");
+    baseUrl = baseUrl.replace(/[?&]imagemogr2\/[^&]*/gi, "");
+    // Remove variant identifiers (!nd_prv_, !nd_dft_) to group by base image
+    baseUrl = baseUrl.replace(/!nd_[^!]*/gi, "");
+    
+    if (!imageGroups.has(baseUrl)) {
+      imageGroups.set(baseUrl, []);
+    }
+    imageGroups.get(baseUrl)!.push(url);
+  }
+  
+  // For each group, prefer high-res versions
+  const finalImages: string[] = [];
+  for (const [baseUrl, variants] of imageGroups.entries()) {
+    if (variants.length === 1) {
+      // Only one variant, use it (should already be high-res due to filtering)
+      finalImages.push(variants[0]);
+    } else {
+      // Multiple variants, prefer high-res
+      // Priority: 1) nd_dft_ (default/high-res), 2) w/720+, 3) others
+      const highRes = variants.find((url) => {
+        const urlLower = url.toLowerCase();
+        // Prefer nd_dft_ over nd_prv_
+        if (/!nd_dft_/i.test(urlLower)) {
+          return true;
+        }
+        // Check width parameter
+        const widthMatch = urlLower.match(/[\/\?&]w\/(\d+)[\/\?&]/);
+        if (widthMatch) {
+          const width = parseInt(widthMatch[1], 10);
+          return width >= 720;
+        }
+        // If no width parameter, prefer URLs with w/720 or higher in the path
+        return /w\/720|w\/1080|w\/1440|w\/1920/.test(urlLower);
+      });
+      
+      if (highRes) {
+        finalImages.push(highRes);
+      } else {
+        // No high-res found, use the first one (shouldn't happen due to filtering above)
+        finalImages.push(variants[0]);
+      }
+    }
+  }
 
   return {
-    images: filteredImages,
+    images: finalImages,
     resolvedUrl,
     title,
   };

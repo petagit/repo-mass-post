@@ -23,6 +23,8 @@ export default function ExtractImagesPage(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(false);
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [downloading, setDownloading] = useState<boolean>(false);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const extractImages = useCallback(async (): Promise<void> => {
     if (!urls.trim()) {
@@ -47,6 +49,7 @@ export default function ExtractImagesPage(): JSX.Element {
 
       const data = (await response.json()) as ExtractionResult;
       setResult(data);
+      setFailedImages(new Set()); // Reset failed images when extracting new ones
 
       const totalImages = data.posts.reduce((sum, post) => sum + post.images.length, 0);
       if (data.success && totalImages > 0) {
@@ -61,6 +64,45 @@ export default function ExtractImagesPage(): JSX.Element {
       setLoading(false);
     }
   }, [urls]);
+
+  const copyToClipboard = useCallback(async (text: string, key: string): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      toast.success("Link copied to clipboard!");
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch (err) {
+      toast.error("Failed to copy link");
+    }
+  }, []);
+
+  const copyAllLinks = useCallback(async (): Promise<void> => {
+    if (!result || !result.success) {
+      toast.error("No links to copy");
+      return;
+    }
+
+    const allLinks: string[] = [];
+    result.posts.forEach((post) => {
+      post.images.forEach((imageUrl) => {
+        allLinks.push(imageUrl);
+      });
+    });
+
+    if (allLinks.length === 0) {
+      toast.error("No image links found");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(allLinks.join("\n"));
+      setCopiedKey("all");
+      toast.success(`Copied ${allLinks.length} link(s) to clipboard!`);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch (err) {
+      toast.error("Failed to copy links");
+    }
+  }, [result]);
 
   const downloadImages = useCallback(async (): Promise<void> => {
     if (!result || !result.success) {
@@ -112,32 +154,120 @@ export default function ExtractImagesPage(): JSX.Element {
 
             const imgResponse = await fetch(imageUrl, {
               headers: {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+                "Origin": "https://www.xiaohongshu.com",
                 "Referer": "https://www.xiaohongshu.com/",
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+                "sec-ch-ua": '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"',
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": '"macOS"',
               },
             });
 
             if (imgResponse.ok) {
+              // Check Content-Type to ensure it's actually an image
+              const contentType = imgResponse.headers.get("content-type") || "";
+              const isImageContentType = /^image\/(jpeg|jpg|png|webp|gif|bmp|svg)/i.test(contentType);
+              
+              // Also check URL for image indicators
+              const urlLower = imageUrl.toLowerCase();
+              const isImageUrl = /\.(jpg|jpeg|png|webp|gif|bmp|svg)(\?|$)/i.test(imageUrl) || 
+                                /xhscdn/i.test(urlLower) ||
+                                isImageContentType;
+              
+              // Skip if it's clearly not an image (JS, CSS, ICO, etc.)
+              if (!isImageContentType && !isImageUrl) {
+                // Check for non-image file extensions
+                if (/\.(js|css|ico|json|html|xml|txt|woff|woff2|ttf|eot|svg)(\?|$)/i.test(imageUrl)) {
+                  console.warn(`Skipping non-image file: ${imageUrl} (Content-Type: ${contentType})`);
+                  continue;
+                }
+              }
+              
               const blob = await imgResponse.blob();
               // Validate blob is not empty
               if (blob.size === 0) {
                 console.error(`Empty blob for image: ${imageUrl}`);
                 continue;
               }
+              
+              // Double-check blob type
+              if (!isImageContentType && blob.type && !blob.type.startsWith("image/")) {
+                console.warn(`Skipping non-image blob: ${imageUrl} (Blob type: ${blob.type})`);
+                continue;
+              }
 
               try {
                 const urlObj = new URL(imageUrl);
                 const pathParts = urlObj.pathname.split("/").filter((p) => p);
-                const fileName = pathParts[pathParts.length - 1] || `image-${imgIndex + 1}.jpg`;
-                // Ensure unique filename if duplicates exist and sanitize filename
+                let fileName = pathParts[pathParts.length - 1] || `image-${imgIndex + 1}`;
+                
+                // Remove query parameters from filename
+                fileName = fileName.split("?")[0];
+                
+                // Determine proper file extension based on Content-Type first
+                let fileExtension = "";
+                if (isImageContentType) {
+                  // Use Content-Type to determine extension (most reliable)
+                  if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+                    fileExtension = ".jpg";
+                  } else if (contentType.includes("png")) {
+                    fileExtension = ".png";
+                  } else if (contentType.includes("webp")) {
+                    fileExtension = ".webp";
+                  } else if (contentType.includes("gif")) {
+                    fileExtension = ".gif";
+                  }
+                }
+                
+                // If no extension from Content-Type, try to extract from filename
+                if (!fileExtension) {
+                  // Match image extensions, including cases like .webp_3, .webp_2, etc.
+                  const extMatch = fileName.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)(?:_\d+)?(\?|$)/i);
+                  if (extMatch) {
+                    const baseExt = extMatch[1].toLowerCase();
+                    // Always use standard extension without _3, _2, etc.
+                    if (baseExt === "webp") {
+                      fileExtension = ".webp";
+                    } else if (baseExt === "jpeg") {
+                      fileExtension = ".jpg";
+                    } else {
+                      fileExtension = `.${baseExt}`;
+                    }
+                    // Remove the extension (including _3 suffix) from filename
+                    fileName = fileName.replace(/\.(jpg|jpeg|png|webp|gif|bmp|svg)(?:_\d+)?.*$/i, "");
+                  } else if (/xhscdn/i.test(urlObj.hostname)) {
+                    // XHS CDN images are typically webp
+                    fileExtension = ".webp";
+                  } else {
+                    // Default to jpg if we can't determine
+                    fileExtension = ".jpg";
+                  }
+                }
+                
+                // Strip any trailing _1, _2, _3, etc. from filename before adding extension
+                fileName = fileName.replace(/_\d+$/, "");
+                
+                // Ensure filename has proper extension (without _3 suffix)
+                const currentExt = fileName.match(/\.(jpg|jpeg|png|webp|gif|bmp|svg)(?:_\d+)?$/i);
+                if (currentExt) {
+                  // Remove existing extension and add correct one
+                  fileName = fileName.replace(/\.(jpg|jpeg|png|webp|gif|bmp|svg)(?:_\d+)?$/i, "");
+                }
+                
+                // Add the correct extension
+                fileName = fileName + fileExtension;
+                
+                // Sanitize filename
                 const sanitizedFileName = fileName.replace(/[<>:"/\\|?*]/g, "_");
                 const finalFileName = `${String(imgIndex + 1).padStart(3, "0")}-${sanitizedFileName}`;
                 
                 postFolder.file(finalFileName, blob);
               } catch (urlError: any) {
                 console.error(`Failed to parse URL ${imageUrl}:`, urlError);
-                // Fallback filename
-                const finalFileName = `${String(imgIndex + 1).padStart(3, "0")}-image.jpg`;
+                // Fallback filename with proper extension
+                const ext = isImageContentType && contentType.includes("webp") ? ".webp" : 
+                           isImageContentType && contentType.includes("png") ? ".png" : ".jpg";
+                const finalFileName = `${String(imgIndex + 1).padStart(3, "0")}-image${ext}`;
                 postFolder.file(finalFileName, blob);
               }
             } else {
@@ -249,48 +379,84 @@ https://xhslink.com/..."
                   )}
                 </div>
 
-                {post.images.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {post.images.map((imageUrl, imgIndex) => (
-                      <div key={imgIndex} className="relative group">
-                        <img
-                          src={imageUrl}
-                          alt={`Image ${imgIndex + 1} from post ${postIndex + 1}`}
-                          className="w-full h-32 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
-                          loading="lazy"
-                          onClick={(): void => {
-                            window.open(imageUrl, "_blank", "noopener,noreferrer");
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center">
-                          <svg
-                            className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                            />
-                          </svg>
-                        </div>
+                {post.images.length > 0 ? (() => {
+                  // Filter out failed images
+                  const visibleImages = post.images.filter((imageUrl, imgIndex) => {
+                    const imageKey = `${postIndex}-${imgIndex}-${imageUrl}`;
+                    return !failedImages.has(imageKey);
+                  });
+
+                  return visibleImages.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {post.images.map((imageUrl, imgIndex) => {
+                          const imageKey = `${postIndex}-${imgIndex}-${imageUrl}`;
+                          const hasFailed = failedImages.has(imageKey);
+                          
+                          // Skip rendering failed images
+                          if (hasFailed) {
+                            return null;
+                          }
+                          
+                          return (
+                            <div 
+                              key={imgIndex} 
+                              className="relative group cursor-pointer aspect-[3/4]"
+                              onClick={(): void => {
+                                window.open(imageUrl, "_blank", "noopener,noreferrer");
+                              }}
+                              title="Click to open image in new tab"
+                            >
+                              <img
+                                src={imageUrl}
+                                alt={`Image ${imgIndex + 1} from post ${postIndex + 1}`}
+                                className="w-full h-full object-cover rounded border hover:opacity-80 transition-opacity"
+                                loading="lazy"
+                                onError={(): void => {
+                                  setFailedImages((prev) => new Set(prev).add(imageKey));
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center rounded">
+                                <svg
+                                  className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                  />
+                                </svg>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                ) : (
+                      {visibleImages.length < post.images.length && (
+                        <div className="text-xs text-gray-400 mt-2">
+                          {visibleImages.length} of {post.images.length} images shown ({post.images.length - visibleImages.length} failed to load)
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-sm text-gray-500">
+                      All {post.images.length} image{post.images.length !== 1 ? "s" : ""} failed to load
+                    </div>
+                  );
+                })() : (
                   <div className="text-sm text-gray-500">No images found</div>
                 )}
                 <div className="text-xs text-gray-500 mt-2">
-                  {post.images.length} image{post.images.length !== 1 ? "s" : ""}
+                  {post.images.length} image{post.images.length !== 1 ? "s" : ""} total
                 </div>
               </div>
             ))}
@@ -312,6 +478,117 @@ https://xhslink.com/..."
               </div>
             </div>
           )}
+        </section>
+      )}
+
+      {result && result.success && result.posts.some((post) => post.images.length > 0) && (
+        <section className="bg-white rounded-lg shadow p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-medium">All Image Links</h2>
+            <button
+              onClick={(): void => void copyAllLinks()}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {copiedKey === "all" ? "Copied!" : "Copy All Links"}
+            </button>
+          </div>
+
+          <div className="max-h-96 overflow-y-auto border rounded-lg">
+            <div className="divide-y">
+              {result.posts.map((post, postIndex) =>
+                post.images.map((imageUrl, imgIndex) => {
+                  const linkKey = `post-${postIndex}-img-${imgIndex}`;
+                  const isCopied = copiedKey === linkKey;
+
+                  return (
+                    <div
+                      key={linkKey}
+                      className="p-3 hover:bg-gray-50 transition-colors flex items-start gap-3"
+                    >
+                      <div className="flex-shrink-0 w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-600 font-medium">
+                        {result.posts
+                          .slice(0, postIndex)
+                          .reduce((sum, p) => sum + p.images.length, 0) +
+                          imgIndex +
+                          1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-gray-500 mb-1">
+                          Post {postIndex + 1}, Image {imgIndex + 1}
+                          {post.title && (
+                            <span className="ml-2">({post.title})</span>
+                          )}
+                        </div>
+                        <a
+                          href={imageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all"
+                          onClick={(e): void => {
+                            e.stopPropagation();
+                          }}
+                        >
+                          {imageUrl}
+                        </a>
+                      </div>
+                      <button
+                        onClick={(e): void => {
+                          e.stopPropagation();
+                          void copyToClipboard(imageUrl, linkKey);
+                        }}
+                        className="flex-shrink-0 px-3 py-1.5 text-sm rounded bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                        title="Copy link"
+                      >
+                        {isCopied ? (
+                          <span className="flex items-center gap-1">
+                            <svg
+                              className="w-4 h-4 text-green-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                            Copied
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                              />
+                            </svg>
+                            Copy
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3 text-xs text-gray-500 text-center">
+            {result.posts.reduce((sum, post) => sum + post.images.length, 0)} total image
+            {result.posts.reduce((sum, post) => sum + post.images.length, 0) !== 1
+              ? "s"
+              : ""}{" "}
+            extracted
+          </div>
         </section>
       )}
     </div>

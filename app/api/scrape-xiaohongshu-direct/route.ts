@@ -290,15 +290,28 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
     const finalVideoLinks = Array.from(allVideoLinks);
     const finalImageLinks = Array.from(allImageLinks);
 
+    const hasMedia = finalVideoLinks.length > 0 || finalImageLinks.length > 0;
+    let errorMessage: string | undefined = undefined;
+    
+    if (!hasMedia) {
+      if (errors.length > 0) {
+        errorMessage = `No media found. Errors: ${errors.join("; ")}`;
+      } else {
+        errorMessage = "No images or videos found on this page. The page may require authentication, or the content may not be accessible.";
+      }
+    } else if (errors.length > 0) {
+      errorMessage = `Some URLs failed: ${errors.join("; ")}`;
+    }
+
     return NextResponse.json({
-      success: finalVideoLinks.length > 0 || finalImageLinks.length > 0,
+      success: hasMedia,
       imageLinks: finalImageLinks,
       videoLinks: finalVideoLinks,
       debugUrls: Array.from(new Set(allDebugUrls)).slice(0, 50), // Increase limit for multiple URLs
       resolvedUrl: firstResolvedUrl,
       testedVideoUrl: firstTestedVideoUrl,
       testResult: firstTestResult,
-      error: errors.length > 0 ? `Some URLs failed: ${errors.join("; ")}` : undefined,
+      error: errorMessage,
     });
   } catch (e: any) {
     return NextResponse.json(

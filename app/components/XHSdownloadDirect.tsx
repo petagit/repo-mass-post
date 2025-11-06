@@ -107,14 +107,16 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
       setResult(data);
       if (onComplete) onComplete(data);
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to extract content";
       const fallback: XHSDownloadResult = {
         success: false,
         imageLinks: [],
         videoLinks: [],
-        error: err instanceof Error ? err.message : "Failed to extract content",
+        error: errorMessage || "Unknown error occurred. Please check the console for details.",
       };
       setResult(fallback);
       if (onComplete) onComplete(fallback);
+      console.error("Extraction error:", err);
     } finally {
       setLoading(false);
     }
