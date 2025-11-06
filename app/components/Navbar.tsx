@@ -3,10 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+interface NavItem {
+  href: string;
+  label: string;
+  external?: boolean;
+}
+
 export default function Navbar(): JSX.Element {
   const pathname = usePathname();
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { href: "/", label: "Home" },
     { href: "https://transition-video.vercel.app/", label: "Transition Video", external: true },
   ];
@@ -44,7 +50,7 @@ export default function Navbar(): JSX.Element {
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={item.href as any}
                   className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                     isActive
                       ? "bg-gray-100 text-gray-900"
