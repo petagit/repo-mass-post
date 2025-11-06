@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 import XHSdownload, { type XHSDownloadResult } from "./components/XHSdownload";
 import XHSdownloadCaptured from "./components/XHSdownloadCaptured";
@@ -249,7 +250,15 @@ export default function Page() {
     <div className="flex flex-col lg:flex-row gap-6 p-6 min-h-screen">
       {/* Main content */}
       <main className="flex-1 max-w-3xl w-full">
-        <h1 className="text-2xl font-semibold mb-4">XHS → Post-Bridge</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-semibold">XHS → Post-Bridge</h1>
+          <Link
+            href="/extract-images"
+            className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+          >
+            Extract Images
+          </Link>
+        </div>
         <div className="space-y-6">
         <section className="bg-white rounded-lg shadow p-5 border-2 border-red-500">
           <div className="flex items-center gap-2 mb-3">
