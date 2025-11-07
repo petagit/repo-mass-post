@@ -528,9 +528,9 @@ export default function PostPage(): JSX.Element {
                             : [...prev, d.id]
                         );
                       }}
-                      className={`px-3 py-2 rounded-full border text-sm backdrop-blur-sm transition-all ${
+                      className={`px-3 py-2 rounded-full border-2 text-sm backdrop-blur-sm transition-all ${
                         selectedDestinations.includes(d.id)
-                          ? "bg-white/40 text-white border-white/50 shadow-lg"
+                          ? "bg-blue-500/60 text-white border-blue-400 shadow-lg shadow-blue-500/50 ring-2 ring-blue-400/50"
                           : "bg-white/20 text-white/90 border-white/30 hover:bg-white/30 hover:border-white/40"
                       }`}
                     >
