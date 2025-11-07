@@ -43,9 +43,8 @@ export default function PostPage(): JSX.Element {
   const [scheduleTime, setScheduleTime] = useState<string>("09:00");
   const [scheduling, setScheduling] = useState<boolean>(false);
 
-  // Posts state
-  const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
-  const [postedPosts, setPostedPosts] = useState<any[]>([]);
+  // Posts state - store posts with account info
+  const [postsByAccount, setPostsByAccount] = useState<Map<string, { scheduled: any[]; posted: any[]; account: Destination }>>(new Map());
   const [loadingPosts, setLoadingPosts] = useState<boolean>(false);
   const [showPosts, setShowPosts] = useState<boolean>(false);
 
@@ -73,22 +72,45 @@ export default function PostPage(): JSX.Element {
       ];
       setDestinations(list);
       
-      // Auto-select Instagram account "aurawell.official" and Pinterest "infoauraspring"
+      // Auto-select Instagram account "aurawell.official" and Pinterest account
       const selectedIds: string[] = [];
       
+      // Try to find Instagram account - check multiple variations
+      const instagramHandles = data.platforms.instagram.map((d) => d.handle.toLowerCase());
+      console.log("Available Instagram handles:", instagramHandles);
+      
       const aurawellAccount = data.platforms.instagram.find(
-        (d) => d.handle.toLowerCase() === "aurawell.official"
+        (d) => {
+          const handle = d.handle.toLowerCase();
+          return handle === "aurawell.official" || handle === "aurawellofficial" || handle.includes("aurawell");
+        }
       );
       if (aurawellAccount) {
         selectedIds.push(aurawellAccount.id);
+        console.log("Found Instagram account:", aurawellAccount.handle);
       }
       
+      // Try to find Pinterest account - check multiple variations
       const pinterestAccounts = data.platforms.pinterest || [];
-      const infoauraspringAccount = pinterestAccounts.find(
-        (d) => d.handle.toLowerCase() === "infoauraspring"
+      const pinterestHandles = pinterestAccounts.map((d) => d.handle.toLowerCase());
+      console.log("Available Pinterest handles:", pinterestHandles);
+      
+      // Try multiple possible Pinterest handle variations
+      const pinterestAccount = pinterestAccounts.find(
+        (d) => {
+          const handle = d.handle.toLowerCase();
+          return (
+            handle === "infoauraspring" ||
+            handle === "infoaurawell" ||
+            handle === "aurawell" ||
+            handle.includes("aurawell") ||
+            handle.includes("aura")
+          );
+        }
       );
-      if (infoauraspringAccount) {
-        selectedIds.push(infoauraspringAccount.id);
+      if (pinterestAccount) {
+        selectedIds.push(pinterestAccount.id);
+        console.log("Found Pinterest account:", pinterestAccount.handle);
       }
       
       if (selectedIds.length > 0) {
@@ -102,7 +124,14 @@ export default function PostPage(): JSX.Element {
           .join(", ");
         toast.success(`Selected: ${accountNames}`, { id });
       } else {
-        toast.error("Could not find aurawell.official Instagram or infoauraspring Pinterest", { id });
+        const availableAccounts = [
+          ...data.platforms.instagram.map((d) => `IG: ${d.handle}`),
+          ...(data.platforms.pinterest || []).map((d) => `Pinterest: ${d.handle}`),
+        ].join(", ");
+        toast.error(
+          `Could not find accounts. Available: ${availableAccounts}`,
+          { id, duration: 5000 }
+        );
       }
       setDestError(data.error || "");
     } catch (e: any) {
@@ -206,21 +235,49 @@ export default function PostPage(): JSX.Element {
     };
   }, [mediaFiles]);
 
-  // Convert files to data URLs (base64) - no storage needed, sent directly to Post-Bridge
-  const convertFilesToDataUrls = useCallback(async (files: File[]): Promise<string[]> => {
-    const dataUrls: string[] = await Promise.all(
-      files.map((file) => {
-        return new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            resolve(reader.result as string);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      })
-    );
-    return dataUrls;
+  // Upload files to Post Bridge and get media URLs
+  const uploadFilesAndGetUrls = useCallback(async (files: File[]): Promise<{ urls: string[]; ids: string[] }> => {
+    if (files.length === 0) {
+      return { urls: [], ids: [] };
+    }
+
+    // Create FormData with all files
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append("files", file);
+    });
+
+    // Upload files to Post Bridge using the create-upload-url endpoint
+    const res = await fetch("/api/post-bridge/upload-media", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      let errorMessage = errorText || "Upload failed";
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch {
+        // Keep original error message
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = (await res.json()) as {
+      success: boolean;
+      mediaUrls: string[];
+      mediaIds?: string[];
+      count: number;
+      error?: string;
+    };
+
+    if (!result.success || (!result.mediaUrls && !result.mediaIds)) {
+      throw new Error(result.error || "No media returned from upload");
+    }
+
+    return { urls: result.mediaUrls || [], ids: result.mediaIds || [] };
   }, []);
 
   // Publish immediately
@@ -241,8 +298,8 @@ export default function PostPage(): JSX.Element {
     setPublishing(true);
     const tId = toast.loading("Processing files and posting…");
     try {
-      // Convert files to data URLs and send directly to Post-Bridge
-      const fileUrls = await convertFilesToDataUrls(mediaFiles.map((mf) => mf.file));
+      // Upload files and get URLs
+      const { urls: fileUrls, ids: fileIds } = await uploadFilesAndGetUrls(mediaFiles.map((mf) => mf.file));
       
       const res = await fetch("/api/post-bridge/publish", {
         method: "POST",
@@ -251,6 +308,7 @@ export default function PostPage(): JSX.Element {
           title,
           caption: description,
           mediaUrls: fileUrls,
+          mediaIds: fileIds,
           destinations: selectedDestinations,
         }),
       });
@@ -273,7 +331,7 @@ export default function PostPage(): JSX.Element {
     } finally {
       setPublishing(false);
     }
-  }, [mediaFiles, selectedDestinations, isUnlocked, title, description, convertFilesToDataUrls]);
+  }, [mediaFiles, selectedDestinations, isUnlocked, title, description, uploadFilesAndGetUrls]);
 
   // Schedule post
   const schedulePost = useCallback(async (): Promise<void> => {
@@ -295,33 +353,87 @@ export default function PostPage(): JSX.Element {
     }
 
     setScheduling(true);
-    const tId = toast.loading("Processing files and scheduling post…");
+    const tId = toast.loading(`Scheduling ${mediaFiles.length} file(s) via Post-Bridge…`);
     try {
-      // Convert files to data URLs and send directly to Post-Bridge
-      const fileUrls = await convertFilesToDataUrls(mediaFiles.map((mf) => mf.file));
+      // Upload files to Post Bridge and get media URLs
+      const { urls: fileUrls, ids: fileIds } = await uploadFilesAndGetUrls(mediaFiles.map((mf) => mf.file));
       
-      // For scheduling, we'll use the bulk-schedule endpoint with a single item
+      // Build array of captions, one per file (same caption for all files)
+      // Only send captions array if we have different captions per file
+      // Otherwise, just send the single caption to reduce payload size
+      const mediaCount = fileUrls.length > 0 ? fileUrls.length : (fileIds.length || 0);
+      const captionsArray: string[] = Array.from({ length: mediaCount }, () => description);
+      const allCaptionsSame = captionsArray.every((c) => c === description);
+      
+      // For scheduling, we'll use the bulk-schedule endpoint
+      const requestBody: {
+        mediaUrls: string[];
+        mediaIds?: string[];
+        destinations: string[];
+        caption?: string;
+        captions?: string[];
+        title?: string;
+        startDate: string;
+        startTime: string;
+        videosPerDay: number;
+      } = {
+        mediaUrls: fileUrls,
+        mediaIds: fileIds && fileIds.length > 0 ? fileIds : undefined,
+        destinations: selectedDestinations,
+        startDate: scheduleDate,
+        startTime: scheduleTime,
+        videosPerDay: 1,
+      };
+      
+      // Only include caption/captions if they have content
+      if (description.trim()) {
+        if (allCaptionsSame) {
+          // If all captions are the same, just send one caption field
+          requestBody.caption = description;
+        } else {
+          // If captions differ, send the array
+          requestBody.captions = captionsArray;
+        }
+      }
+      
+      if (title.trim()) {
+        requestBody.title = title;
+      }
+      
       const res = await fetch("/api/post-bridge/bulk-schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mediaUrls: fileUrls,
-          destinations: selectedDestinations,
-          caption: description,
-          title,
-          startDate: scheduleDate,
-          startTime: scheduleTime,
-          videosPerDay: 1,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "Schedule failed");
+        let errorMessage = text || "Schedule failed";
+        try {
+          const errorJson = JSON.parse(text);
+          errorMessage = errorJson.error || errorJson.message || errorMessage;
+        } catch {
+          // Keep original error message
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await res.json();
-      toast.success("Post scheduled successfully!", { id: tId });
+      const successCount = result.scheduled || 0;
+      const totalCount = result.total || fileUrls.length;
+      
+      if (result.errors && result.errors.length > 0) {
+        console.error("Scheduling errors:", result.errors);
+        toast.error(
+          `Scheduled ${successCount}/${totalCount} file(s). Errors: ${result.errors.slice(0, 2).join(", ")}`,
+          { id: tId, duration: 5000 }
+        );
+      } else {
+        toast.success(
+          `Successfully scheduled ${successCount}/${totalCount} file(s)`,
+          { id: tId }
+        );
+      }
       
       // Reset form
       setTitle("");
@@ -334,7 +446,7 @@ export default function PostPage(): JSX.Element {
     } finally {
       setScheduling(false);
     }
-  }, [mediaFiles, selectedDestinations, isUnlocked, title, description, scheduleDate, scheduleTime, convertFilesToDataUrls]);
+  }, [mediaFiles, selectedDestinations, isUnlocked, title, description, scheduleDate, scheduleTime, uploadFilesAndGetUrls]);
 
   const selectedAccounts = useMemo(() => {
     return destinations.filter((d) => selectedDestinations.includes(d.id));
@@ -343,8 +455,7 @@ export default function PostPage(): JSX.Element {
   // Fetch posts from Post-Bridge for all selected accounts
   const fetchPosts = useCallback(async (): Promise<void> => {
     if (selectedDestinations.length === 0) {
-      setScheduledPosts([]);
-      setPostedPosts([]);
+      setPostsByAccount(new Map());
       setShowPosts(false);
       return;
     }
@@ -352,19 +463,22 @@ export default function PostPage(): JSX.Element {
     setLoadingPosts(true);
     const tId = toast.loading("Fetching posts...");
     try {
-      // Fetch posts for all selected accounts
-      const allScheduledPosts: any[] = [];
-      const allPostedPosts: any[] = [];
+      // Fetch posts for all selected accounts, grouped by account
+      const postsMap = new Map<string, { scheduled: any[]; posted: any[]; account: Destination }>();
 
       for (const destinationId of selectedDestinations) {
+        const account = destinations.find((d) => d.id === destinationId);
+        if (!account) continue;
+
         // Fetch scheduled posts
         const scheduledRes = await fetch(
           `/api/post-bridge/posts?destinationId=${destinationId}&status=scheduled`
         );
+        const scheduledPosts: any[] = [];
         if (scheduledRes.ok) {
           const scheduledData = (await scheduledRes.json()) as { posts: any[]; success: boolean };
           if (scheduledData.posts && scheduledData.posts.length > 0) {
-            allScheduledPosts.push(...scheduledData.posts);
+            scheduledPosts.push(...scheduledData.posts);
           }
         }
 
@@ -372,22 +486,35 @@ export default function PostPage(): JSX.Element {
         const postedRes = await fetch(
           `/api/post-bridge/posts?destinationId=${destinationId}&status=posted`
         );
+        const postedPosts: any[] = [];
         if (postedRes.ok) {
           const postedData = (await postedRes.json()) as { posts: any[]; success: boolean };
           if (postedData.posts && postedData.posts.length > 0) {
-            allPostedPosts.push(...postedData.posts);
+            postedPosts.push(...postedData.posts);
           }
+        }
+
+        if (scheduledPosts.length > 0 || postedPosts.length > 0) {
+          postsMap.set(destinationId, {
+            scheduled: scheduledPosts,
+            posted: postedPosts,
+            account,
+          });
         }
       }
 
-      setScheduledPosts(allScheduledPosts);
-      setPostedPosts(allPostedPosts);
+      setPostsByAccount(postsMap);
       setShowPosts(true);
 
-      const totalScheduled = allScheduledPosts.length;
-      const totalPosted = allPostedPosts.length;
+      const totalScheduled = Array.from(postsMap.values()).reduce((sum, data) => sum + data.scheduled.length, 0);
+      const totalPosted = Array.from(postsMap.values()).reduce((sum, data) => sum + data.posted.length, 0);
+      
+      const accountNames = Array.from(postsMap.values())
+        .map((data) => `${data.account.platform === "instagram" ? "IG" : data.account.platform === "pinterest" ? "Pinterest" : "X"}: ${data.account.handle}`)
+        .join(", ");
+      
       toast.success(
-        `Found ${totalScheduled} scheduled and ${totalPosted} posted posts`,
+        `Found ${totalScheduled} scheduled and ${totalPosted} posted posts from ${accountNames}`,
         { id: tId }
       );
     } catch (e: any) {
@@ -395,7 +522,7 @@ export default function PostPage(): JSX.Element {
     } finally {
       setLoadingPosts(false);
     }
-  }, [selectedDestinations]);
+  }, [selectedDestinations, destinations]);
 
   // Auto-fetch posts when selected destinations change
   useEffect(() => {
@@ -556,8 +683,8 @@ export default function PostPage(): JSX.Element {
         )}
       </section>
 
-      {/* Posts Display */}
-      {showPosts && (
+      {/* Posts Display - Grouped by Account */}
+      {showPosts && postsByAccount.size > 0 && (
         <section className="bg-white rounded-lg shadow p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-medium">Posts History</h2>
@@ -569,177 +696,190 @@ export default function PostPage(): JSX.Element {
             </button>
           </div>
 
-          {/* Scheduled Posts */}
-          {scheduledPosts.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-green-700 mb-3">
-                Scheduled Posts ({scheduledPosts.length})
-              </h3>
-              <div className="space-y-3">
-                {scheduledPosts.map((post: any, index: number) => {
-                  const scheduledAt = post.scheduled_at || post.scheduledAt;
-                  const mediaUrls = post.media_urls || post.mediaUrls || [];
-                  const caption = post.caption || post.text || post.title || "";
-                  
-                  return (
-                    <div
-                      key={post.id || index}
-                      className="border rounded-lg p-4 bg-green-50 border-green-200"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900 mb-1">
-                            {post.title || `Post #${index + 1}`}
-                          </div>
-                          {scheduledAt && (
-                            <div className="text-xs text-gray-600">
-                              Scheduled: {new Date(scheduledAt).toLocaleString()}
-                            </div>
-                          )}
-                          {caption && (
-                            <div className="text-sm text-gray-700 mt-2 line-clamp-2">
-                              {caption}
-                            </div>
-                          )}
-                        </div>
-                        <span className="px-2 py-1 text-xs bg-green-200 text-green-800 rounded-full">
-                          Scheduled
-                        </span>
-                      </div>
-                      {mediaUrls.length > 0 && (
-                        <div className="mt-3 flex gap-2 flex-wrap">
-                          {mediaUrls.slice(0, 3).map((url: string, i: number) => {
-                            const isVideo = /\.(mp4|mov|m3u8|mpd)(\?|$)/i.test(url) || url.startsWith("data:video");
-                            const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url) || url.startsWith("data:image");
-                            
-                            return (
-                              <div
-                                key={i}
-                                className="w-20 h-20 rounded border overflow-hidden bg-gray-100"
-                              >
-                                {isVideo ? (
-                                  <video
-                                    src={url}
-                                    className="w-full h-full object-cover"
-                                    muted
-                                    playsInline
-                                  />
-                                ) : isImage ? (
-                                  <img
-                                    src={url}
-                                    alt={`Media ${i + 1}`}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                                    Media
+          {Array.from(postsByAccount.entries()).map(([accountId, data]) => {
+            const { account, scheduled, posted } = data;
+            const platformLabel = account.platform === "instagram" ? "IG" : account.platform === "pinterest" ? "Pinterest" : "X";
+            
+            return (
+              <div key={accountId} className="mb-6 last:mb-0">
+                <h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">
+                  {platformLabel} · {account.handle}
+                </h3>
+
+                {/* Scheduled Posts for this account */}
+                {scheduled.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-semibold text-green-700 mb-2">
+                      Scheduled Posts ({scheduled.length})
+                    </h4>
+                    <div className="space-y-3">
+                      {scheduled.map((post: any, index: number) => {
+                        const scheduledAt = post.scheduled_at || post.scheduledAt;
+                        const mediaUrls = post.media_urls || post.mediaUrls || [];
+                        const caption = post.caption || post.text || post.title || "";
+                        
+                        return (
+                          <div
+                            key={post.id || `${accountId}-scheduled-${index}`}
+                            className="border rounded-lg p-4 bg-green-50 border-green-200"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-gray-900 mb-1">
+                                  {post.title || `Post #${index + 1}`}
+                                </div>
+                                {scheduledAt && (
+                                  <div className="text-xs text-gray-600">
+                                    Scheduled: {new Date(scheduledAt).toLocaleString()}
+                                  </div>
+                                )}
+                                {caption && (
+                                  <div className="text-sm text-gray-700 mt-2 line-clamp-2">
+                                    {caption}
                                   </div>
                                 )}
                               </div>
-                            );
-                          })}
-                          {mediaUrls.length > 3 && (
-                            <div className="w-20 h-20 rounded border bg-gray-100 flex items-center justify-center text-xs text-gray-500">
-                              +{mediaUrls.length - 3}
+                              <span className="px-2 py-1 text-xs bg-green-200 text-green-800 rounded-full">
+                                Scheduled
+                              </span>
                             </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Posted Posts */}
-          {postedPosts.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-blue-700 mb-3">
-                Posted Posts ({postedPosts.length})
-              </h3>
-              <div className="space-y-3">
-                {postedPosts.map((post: any, index: number) => {
-                  const publishedAt = post.published_at || post.publishedAt || post.created_at || post.createdAt;
-                  const mediaUrls = post.media_urls || post.mediaUrls || [];
-                  const caption = post.caption || post.text || post.title || "";
-                  
-                  return (
-                    <div
-                      key={post.id || index}
-                      className="border rounded-lg p-4 bg-blue-50 border-blue-200"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900 mb-1">
-                            {post.title || `Post #${index + 1}`}
-                          </div>
-                          {publishedAt && (
-                            <div className="text-xs text-gray-600">
-                              Posted: {new Date(publishedAt).toLocaleString()}
-                            </div>
-                          )}
-                          {caption && (
-                            <div className="text-sm text-gray-700 mt-2 line-clamp-2">
-                              {caption}
-                            </div>
-                          )}
-                        </div>
-                        <span className="px-2 py-1 text-xs bg-blue-200 text-blue-800 rounded-full">
-                          Posted
-                        </span>
-                      </div>
-                      {mediaUrls.length > 0 && (
-                        <div className="mt-3 flex gap-2 flex-wrap">
-                          {mediaUrls.slice(0, 3).map((url: string, i: number) => {
-                            const isVideo = /\.(mp4|mov|m3u8|mpd)(\?|$)/i.test(url) || url.startsWith("data:video");
-                            const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url) || url.startsWith("data:image");
-                            
-                            return (
-                              <div
-                                key={i}
-                                className="w-20 h-20 rounded border overflow-hidden bg-gray-100"
-                              >
-                                {isVideo ? (
-                                  <video
-                                    src={url}
-                                    className="w-full h-full object-cover"
-                                    muted
-                                    playsInline
-                                  />
-                                ) : isImage ? (
-                                  <img
-                                    src={url}
-                                    alt={`Media ${i + 1}`}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                                    Media
+                            {mediaUrls.length > 0 && (
+                              <div className="mt-3 flex gap-2 flex-wrap">
+                                {mediaUrls.slice(0, 3).map((url: string, i: number) => {
+                                  const isVideo = /\.(mp4|mov|m3u8|mpd)(\?|$)/i.test(url) || url.startsWith("data:video");
+                                  const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url) || url.startsWith("data:image");
+                                  
+                                  return (
+                                    <div
+                                      key={i}
+                                      className="w-20 h-20 rounded border overflow-hidden bg-gray-100"
+                                    >
+                                      {isVideo ? (
+                                        <video
+                                          src={url}
+                                          className="w-full h-full object-cover"
+                                          muted
+                                          playsInline
+                                        />
+                                      ) : isImage ? (
+                                        <img
+                                          src={url}
+                                          alt={`Media ${i + 1}`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                                          Media
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                {mediaUrls.length > 3 && (
+                                  <div className="w-20 h-20 rounded border bg-gray-100 flex items-center justify-center text-xs text-gray-500">
+                                    +{mediaUrls.length - 3}
                                   </div>
                                 )}
                               </div>
-                            );
-                          })}
-                          {mediaUrls.length > 3 && (
-                            <div className="w-20 h-20 rounded border bg-gray-100 flex items-center justify-center text-xs text-gray-500">
-                              +{mediaUrls.length - 3}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                  </div>
+                )}
 
-          {scheduledPosts.length === 0 && postedPosts.length === 0 && (
-            <div className="text-sm text-gray-500 text-center py-4">
-              No posts found for this account
-            </div>
-          )}
+                {/* Posted Posts for this account */}
+                {posted.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-700 mb-2">
+                      Posted Posts ({posted.length})
+                    </h4>
+                    <div className="space-y-3">
+                      {posted.map((post: any, index: number) => {
+                        const publishedAt = post.published_at || post.publishedAt || post.created_at || post.createdAt;
+                        const mediaUrls = post.media_urls || post.mediaUrls || [];
+                        const caption = post.caption || post.text || post.title || "";
+                        
+                        return (
+                          <div
+                            key={post.id || `${accountId}-posted-${index}`}
+                            className="border rounded-lg p-4 bg-blue-50 border-blue-200"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-gray-900 mb-1">
+                                  {post.title || `Post #${index + 1}`}
+                                </div>
+                                {publishedAt && (
+                                  <div className="text-xs text-gray-600">
+                                    Posted: {new Date(publishedAt).toLocaleString()}
+                                  </div>
+                                )}
+                                {caption && (
+                                  <div className="text-sm text-gray-700 mt-2 line-clamp-2">
+                                    {caption}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="px-2 py-1 text-xs bg-blue-200 text-blue-800 rounded-full">
+                                Posted
+                              </span>
+                            </div>
+                            {mediaUrls.length > 0 && (
+                              <div className="mt-3 flex gap-2 flex-wrap">
+                                {mediaUrls.slice(0, 3).map((url: string, i: number) => {
+                                  const isVideo = /\.(mp4|mov|m3u8|mpd)(\?|$)/i.test(url) || url.startsWith("data:video");
+                                  const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url) || url.startsWith("data:image");
+                                  
+                                  return (
+                                    <div
+                                      key={i}
+                                      className="w-20 h-20 rounded border overflow-hidden bg-gray-100"
+                                    >
+                                      {isVideo ? (
+                                        <video
+                                          src={url}
+                                          className="w-full h-full object-cover"
+                                          muted
+                                          playsInline
+                                        />
+                                      ) : isImage ? (
+                                        <img
+                                          src={url}
+                                          alt={`Media ${i + 1}`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                                          Media
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                {mediaUrls.length > 3 && (
+                                  <div className="w-20 h-20 rounded border bg-gray-100 flex items-center justify-center text-xs text-gray-500">
+                                    +{mediaUrls.length - 3}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {scheduled.length === 0 && posted.length === 0 && (
+                  <div className="text-sm text-gray-500 text-center py-2">
+                    No posts found for this account
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </section>
       )}
 
@@ -914,4 +1054,3 @@ export default function PostPage(): JSX.Element {
     </div>
   );
 }
-

@@ -51,7 +51,8 @@ export async function GET(): Promise<NextResponse> {
         : (json.destinations ?? json.accounts ?? json.data ?? json.items ?? []);
       list = arr
         .map((raw: any): DestinationDto | null => {
-          const id: string | undefined = raw.id || raw.account_id || raw.destination_id || raw._id;
+          const preferredId = raw.account_id ?? raw.social_account_id ?? raw.destination_id ?? raw.id ?? raw._id;
+          const id: string | undefined = preferredId !== undefined ? String(preferredId) : undefined;
           const platformRaw: string | undefined = raw.platform || raw.provider || raw.network || raw.type;
           const handleRaw: string | undefined = raw.handle || raw.username || raw.name || raw.screen_name;
           if (!id || !platformRaw || !handleRaw) return null;
@@ -106,6 +107,5 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ error: e?.message || "Unexpected error" }, { status: 500 });
   }
 }
-
 
 
