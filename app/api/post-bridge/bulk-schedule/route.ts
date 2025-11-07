@@ -258,7 +258,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         } catch (e: any) {
           console.error(`Exception scheduling media ${i}:`, e);
           results.push({
-            mediaUrl,
+            mediaUrl: mediaItem,
             scheduledAt,
             success: false,
             error: e?.message || "Request failed",

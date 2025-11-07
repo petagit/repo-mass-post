@@ -40,13 +40,15 @@ async function testUploadMedia(): Promise<{ mediaUrls: string[]; mediaIds: strin
   // Create test image if it doesn't exist
   if (!existsSync(testImagePath)) {
     console.log("   Creating test image...");
-    writeFileSync(testImagePath, createTestImage());
+    const testImageBuffer = createTestImage();
+    writeFileSync(testImagePath, testImageBuffer as NodeJS.ArrayBufferView);
   }
   
   const imageBuffer = readFileSync(testImagePath);
   
   // Use FormData with Blob (available in Node.js 18+)
-  const blob = new Blob([imageBuffer], { type: "image/png" });
+  // Convert Buffer to Uint8Array for Blob compatibility
+  const blob = new Blob([new Uint8Array(imageBuffer)], { type: "image/png" });
   const formData = new FormData();
   formData.append("files", blob, "test-image.png");
   

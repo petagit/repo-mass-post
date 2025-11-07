@@ -43,11 +43,6 @@ export default function PostPage(): JSX.Element {
   const [scheduleTime, setScheduleTime] = useState<string>("09:00");
   const [scheduling, setScheduling] = useState<boolean>(false);
 
-  // Posts state - store posts with account info
-  const [postsByAccount, setPostsByAccount] = useState<Map<string, { scheduled: any[]; posted: any[]; account: Destination }>>(new Map());
-  const [loadingPosts, setLoadingPosts] = useState<boolean>(false);
-  const [showPosts, setShowPosts] = useState<boolean>(false);
-
   // Auto-load and select Instagram account "costights"
   const fetchDestinations = useCallback(async (): Promise<void> => {
     setLoadingDest(true);
@@ -448,109 +443,26 @@ export default function PostPage(): JSX.Element {
     }
   }, [mediaFiles, selectedDestinations, isUnlocked, title, description, scheduleDate, scheduleTime, uploadFilesAndGetUrls]);
 
-  const selectedAccounts = useMemo(() => {
-    return destinations.filter((d) => selectedDestinations.includes(d.id));
-  }, [destinations, selectedDestinations]);
-
-  // Fetch posts from Post-Bridge for all selected accounts
-  const fetchPosts = useCallback(async (): Promise<void> => {
-    if (selectedDestinations.length === 0) {
-      setPostsByAccount(new Map());
-      setShowPosts(false);
-      return;
-    }
-
-    setLoadingPosts(true);
-    const tId = toast.loading("Fetching posts...");
-    try {
-      // Fetch posts for all selected accounts, grouped by account
-      const postsMap = new Map<string, { scheduled: any[]; posted: any[]; account: Destination }>();
-
-      for (const destinationId of selectedDestinations) {
-        const account = destinations.find((d) => d.id === destinationId);
-        if (!account) continue;
-
-        // Fetch scheduled posts
-        const scheduledRes = await fetch(
-          `/api/post-bridge/posts?destinationId=${destinationId}&status=scheduled`
-        );
-        const scheduledPosts: any[] = [];
-        if (scheduledRes.ok) {
-          const scheduledData = (await scheduledRes.json()) as { posts: any[]; success: boolean };
-          if (scheduledData.posts && scheduledData.posts.length > 0) {
-            scheduledPosts.push(...scheduledData.posts);
-          }
-        }
-
-        // Fetch posted posts
-        const postedRes = await fetch(
-          `/api/post-bridge/posts?destinationId=${destinationId}&status=posted`
-        );
-        const postedPosts: any[] = [];
-        if (postedRes.ok) {
-          const postedData = (await postedRes.json()) as { posts: any[]; success: boolean };
-          if (postedData.posts && postedData.posts.length > 0) {
-            postedPosts.push(...postedData.posts);
-          }
-        }
-
-        if (scheduledPosts.length > 0 || postedPosts.length > 0) {
-          postsMap.set(destinationId, {
-            scheduled: scheduledPosts,
-            posted: postedPosts,
-            account,
-          });
-        }
-      }
-
-      setPostsByAccount(postsMap);
-      setShowPosts(true);
-
-      const totalScheduled = Array.from(postsMap.values()).reduce((sum, data) => sum + data.scheduled.length, 0);
-      const totalPosted = Array.from(postsMap.values()).reduce((sum, data) => sum + data.posted.length, 0);
-      
-      const accountNames = Array.from(postsMap.values())
-        .map((data) => `${data.account.platform === "instagram" ? "IG" : data.account.platform === "pinterest" ? "Pinterest" : "X"}: ${data.account.handle}`)
-        .join(", ");
-      
-      toast.success(
-        `Found ${totalScheduled} scheduled and ${totalPosted} posted posts from ${accountNames}`,
-        { id: tId }
-      );
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to fetch posts", { id: tId });
-    } finally {
-      setLoadingPosts(false);
-    }
-  }, [selectedDestinations, destinations]);
-
-  // Auto-fetch posts when selected destinations change
-  useEffect(() => {
-    if (selectedDestinations.length > 0 && destinations.length > 0) {
-      void fetchPosts();
-    }
-  }, [selectedDestinations, destinations, fetchPosts]);
-
   return (
     <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto min-h-screen">
-      <h1 className="text-2xl font-semibold">Post for me Tool</h1>
+      <h1 className="text-2xl font-semibold text-white drop-shadow-lg">Post for me Tool</h1>
 
       {/* Password Protection */}
       {!isUnlocked && (
-        <section className="bg-white rounded-lg shadow p-5 border-2 border-yellow-500">
-          <h2 className="font-medium mb-3 text-yellow-800">🔒 Unlock Post Button</h2>
+        <section className="glass-card rounded-lg shadow-xl p-5 border-2 border-yellow-400/50">
+          <h2 className="font-medium mb-3 text-yellow-200 drop-shadow-md">🔒 Unlock Post Button</h2>
           <form onSubmit={handlePasswordSubmit} className="flex gap-3">
             <input
               type="password"
               value={password}
               onChange={(e): void => setPassword(e.target.value)}
               placeholder="Enter password to unlock"
-              className="flex-1 px-3 py-2 border rounded-lg"
+              className="glass-input flex-1 px-3 py-2 rounded-lg text-white placeholder-white/60"
               autoFocus
             />
             <button
               type="submit"
-              className="px-5 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white"
+              className="px-5 py-2 rounded-lg bg-yellow-500/80 hover:bg-yellow-500 backdrop-blur-sm text-white border border-yellow-400/50 shadow-lg transition-all"
             >
               Unlock
             </button>
@@ -559,29 +471,29 @@ export default function PostPage(): JSX.Element {
       )}
 
       {/* Title and Description */}
-      <section className="bg-white rounded-lg shadow p-5">
-        <h2 className="font-medium mb-3">Post Details</h2>
+      <section className="glass-card rounded-lg shadow-xl p-5">
+        <h2 className="font-medium mb-3 text-white drop-shadow-md">Post Details</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Title</label>
+            <label className="block text-sm font-medium mb-2 text-white/90">Title</label>
             <input
               type="text"
               value={title}
               onChange={(e): void => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="glass-input w-full px-3 py-2 rounded-lg text-white placeholder-white/60"
               placeholder="Enter post title (optional)"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Description</label>
+            <label className="block text-sm font-medium mb-2 text-white/90">Description</label>
             <textarea
               value={description}
               onChange={(e): void => setDescription(e.target.value)}
-              className="w-full min-h-24 resize-y px-3 py-2 border rounded-lg"
+              className="glass-input w-full min-h-24 resize-y px-3 py-2 rounded-lg text-white placeholder-white/60"
               placeholder="Write a caption or description..."
               maxLength={2200}
             />
-            <div className="text-xs text-gray-500 mt-1 text-right">
+            <div className="text-xs text-white/70 mt-1 text-right">
               {description.length}/2200
             </div>
           </div>
@@ -589,40 +501,16 @@ export default function PostPage(): JSX.Element {
       </section>
 
       {/* Account Selection */}
-      <section className="bg-white rounded-lg shadow p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-medium">Selected Accounts</h2>
-          {loadingPosts && (
-            <span className="text-sm text-gray-500">Loading posts...</span>
-          )}
-        </div>
+      <section className="glass-card rounded-lg shadow-xl p-5">
         {loadingDest ? (
-          <div className="text-sm text-gray-500">Loading accounts...</div>
+          <div className="text-sm text-white/80 mb-3">Loading accounts...</div>
         ) : destError ? (
-          <div className="text-sm text-red-600">{destError}</div>
-        ) : selectedAccounts.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 rounded-lg">
-            {selectedAccounts.map((account) => (
-              <div
-                key={account.id}
-                className="px-3 py-2 rounded-full bg-gray-900 text-white text-sm font-medium"
-              >
-                {account.platform === "instagram"
-                  ? "IG"
-                  : account.platform === "pinterest"
-                  ? "Pinterest"
-                  : "X"}{" "}
-                · {account.handle}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-sm text-gray-500">No accounts selected</div>
-        )}
+          <div className="text-sm text-red-300 mb-3">{destError}</div>
+        ) : null}
         {destinations.length > 0 && (
-          <div className="mt-3 space-y-3">
+          <div className="space-y-3">
             <div>
-              <h3 className="text-xs font-medium text-gray-600 mb-2">Instagram</h3>
+              <h3 className="text-xs font-medium text-white/90 mb-2">Instagram</h3>
               <div className="flex flex-wrap gap-2">
                 {destinations
                   .filter((d) => d.platform === "instagram")
@@ -640,10 +528,10 @@ export default function PostPage(): JSX.Element {
                             : [...prev, d.id]
                         );
                       }}
-                      className={`px-3 py-2 rounded-full border text-sm transition-colors ${
+                      className={`px-3 py-2 rounded-full border text-sm backdrop-blur-sm transition-all ${
                         selectedDestinations.includes(d.id)
-                          ? "bg-gray-900 text-white border-gray-900"
-                          : "bg-white text-gray-800 border-gray-300 hover:border-gray-400"
+                          ? "bg-white/40 text-white border-white/50 shadow-lg"
+                          : "bg-white/20 text-white/90 border-white/30 hover:bg-white/30 hover:border-white/40"
                       }`}
                     >
                       {d.handle}
@@ -653,7 +541,7 @@ export default function PostPage(): JSX.Element {
             </div>
             {destinations.some((d) => d.platform === "pinterest") && (
               <div>
-                <h3 className="text-xs font-medium text-gray-600 mb-2">Pinterest</h3>
+                <h3 className="text-xs font-medium text-white/90 mb-2">Pinterest</h3>
                 <div className="flex flex-wrap gap-2">
                   {destinations
                     .filter((d) => d.platform === "pinterest")
@@ -667,10 +555,10 @@ export default function PostPage(): JSX.Element {
                               : [...prev, d.id]
                           );
                         }}
-                        className={`px-3 py-2 rounded-full border text-sm transition-colors ${
+                        className={`px-3 py-2 rounded-full border text-sm backdrop-blur-sm transition-all ${
                           selectedDestinations.includes(d.id)
-                            ? "bg-gray-900 text-white border-gray-900"
-                            : "bg-white text-gray-800 border-gray-300 hover:border-gray-400"
+                            ? "bg-white/40 text-white border-white/50 shadow-lg"
+                            : "bg-white/20 text-white/90 border-white/30 hover:bg-white/30 hover:border-white/40"
                         }`}
                       >
                         {d.handle}
@@ -683,209 +571,9 @@ export default function PostPage(): JSX.Element {
         )}
       </section>
 
-      {/* Posts Display - Grouped by Account */}
-      {showPosts && postsByAccount.size > 0 && (
-        <section className="bg-white rounded-lg shadow p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-medium">Posts History</h2>
-            <button
-              onClick={(): void => setShowPosts(false)}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Hide
-            </button>
-          </div>
-
-          {Array.from(postsByAccount.entries()).map(([accountId, data]) => {
-            const { account, scheduled, posted } = data;
-            const platformLabel = account.platform === "instagram" ? "IG" : account.platform === "pinterest" ? "Pinterest" : "X";
-            
-            return (
-              <div key={accountId} className="mb-6 last:mb-0">
-                <h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">
-                  {platformLabel} · {account.handle}
-                </h3>
-
-                {/* Scheduled Posts for this account */}
-                {scheduled.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-sm font-semibold text-green-700 mb-2">
-                      Scheduled Posts ({scheduled.length})
-                    </h4>
-                    <div className="space-y-3">
-                      {scheduled.map((post: any, index: number) => {
-                        const scheduledAt = post.scheduled_at || post.scheduledAt;
-                        const mediaUrls = post.media_urls || post.mediaUrls || [];
-                        const caption = post.caption || post.text || post.title || "";
-                        
-                        return (
-                          <div
-                            key={post.id || `${accountId}-scheduled-${index}`}
-                            className="border rounded-lg p-4 bg-green-50 border-green-200"
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <div className="text-sm font-medium text-gray-900 mb-1">
-                                  {post.title || `Post #${index + 1}`}
-                                </div>
-                                {scheduledAt && (
-                                  <div className="text-xs text-gray-600">
-                                    Scheduled: {new Date(scheduledAt).toLocaleString()}
-                                  </div>
-                                )}
-                                {caption && (
-                                  <div className="text-sm text-gray-700 mt-2 line-clamp-2">
-                                    {caption}
-                                  </div>
-                                )}
-                              </div>
-                              <span className="px-2 py-1 text-xs bg-green-200 text-green-800 rounded-full">
-                                Scheduled
-                              </span>
-                            </div>
-                            {mediaUrls.length > 0 && (
-                              <div className="mt-3 flex gap-2 flex-wrap">
-                                {mediaUrls.slice(0, 3).map((url: string, i: number) => {
-                                  const isVideo = /\.(mp4|mov|m3u8|mpd)(\?|$)/i.test(url) || url.startsWith("data:video");
-                                  const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url) || url.startsWith("data:image");
-                                  
-                                  return (
-                                    <div
-                                      key={i}
-                                      className="w-20 h-20 rounded border overflow-hidden bg-gray-100"
-                                    >
-                                      {isVideo ? (
-                                        <video
-                                          src={url}
-                                          className="w-full h-full object-cover"
-                                          muted
-                                          playsInline
-                                        />
-                                      ) : isImage ? (
-                                        <img
-                                          src={url}
-                                          alt={`Media ${i + 1}`}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                                          Media
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                                {mediaUrls.length > 3 && (
-                                  <div className="w-20 h-20 rounded border bg-gray-100 flex items-center justify-center text-xs text-gray-500">
-                                    +{mediaUrls.length - 3}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Posted Posts for this account */}
-                {posted.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-semibold text-blue-700 mb-2">
-                      Posted Posts ({posted.length})
-                    </h4>
-                    <div className="space-y-3">
-                      {posted.map((post: any, index: number) => {
-                        const publishedAt = post.published_at || post.publishedAt || post.created_at || post.createdAt;
-                        const mediaUrls = post.media_urls || post.mediaUrls || [];
-                        const caption = post.caption || post.text || post.title || "";
-                        
-                        return (
-                          <div
-                            key={post.id || `${accountId}-posted-${index}`}
-                            className="border rounded-lg p-4 bg-blue-50 border-blue-200"
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <div className="text-sm font-medium text-gray-900 mb-1">
-                                  {post.title || `Post #${index + 1}`}
-                                </div>
-                                {publishedAt && (
-                                  <div className="text-xs text-gray-600">
-                                    Posted: {new Date(publishedAt).toLocaleString()}
-                                  </div>
-                                )}
-                                {caption && (
-                                  <div className="text-sm text-gray-700 mt-2 line-clamp-2">
-                                    {caption}
-                                  </div>
-                                )}
-                              </div>
-                              <span className="px-2 py-1 text-xs bg-blue-200 text-blue-800 rounded-full">
-                                Posted
-                              </span>
-                            </div>
-                            {mediaUrls.length > 0 && (
-                              <div className="mt-3 flex gap-2 flex-wrap">
-                                {mediaUrls.slice(0, 3).map((url: string, i: number) => {
-                                  const isVideo = /\.(mp4|mov|m3u8|mpd)(\?|$)/i.test(url) || url.startsWith("data:video");
-                                  const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url) || url.startsWith("data:image");
-                                  
-                                  return (
-                                    <div
-                                      key={i}
-                                      className="w-20 h-20 rounded border overflow-hidden bg-gray-100"
-                                    >
-                                      {isVideo ? (
-                                        <video
-                                          src={url}
-                                          className="w-full h-full object-cover"
-                                          muted
-                                          playsInline
-                                        />
-                                      ) : isImage ? (
-                                        <img
-                                          src={url}
-                                          alt={`Media ${i + 1}`}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                                          Media
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                                {mediaUrls.length > 3 && (
-                                  <div className="w-20 h-20 rounded border bg-gray-100 flex items-center justify-center text-xs text-gray-500">
-                                    +{mediaUrls.length - 3}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {scheduled.length === 0 && posted.length === 0 && (
-                  <div className="text-sm text-gray-500 text-center py-2">
-                    No posts found for this account
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </section>
-      )}
-
       {/* Drag and Drop Area */}
-      <section className="bg-white rounded-lg shadow p-5">
-        <h2 className="font-medium mb-3">Media Files</h2>
+      <section className="glass-card rounded-lg shadow-xl p-5">
+        <h2 className="font-medium mb-3 text-white drop-shadow-md">Media Files</h2>
         <div
           onDrop={handleDrop}
           onDragOver={(e): void => {
@@ -893,10 +581,10 @@ export default function PostPage(): JSX.Element {
             setIsDragging(true);
           }}
           onDragLeave={(): void => setIsDragging(false)}
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-all backdrop-blur-sm ${
             isDragging
-              ? "border-blue-500 bg-blue-50"
-              : "border-gray-300 hover:border-gray-400"
+              ? "border-blue-400/70 bg-blue-500/20"
+              : "border-white/30 hover:border-white/50 bg-white/5"
           }`}
         >
           <input
@@ -925,12 +613,12 @@ export default function PostPage(): JSX.Element {
               />
             </svg>
             <div>
-              <span className="text-blue-600 hover:text-blue-700 font-medium">
+              <span className="text-blue-200 hover:text-blue-100 font-medium">
                 Click to upload
               </span>
-              <span className="text-gray-600"> or drag and drop</span>
+              <span className="text-white/80"> or drag and drop</span>
             </div>
-            <p className="text-sm text-gray-500">Photos and videos (PNG, JPG, MP4, etc.)</p>
+            <p className="text-sm text-white/70">Photos and videos (PNG, JPG, MP4, etc.)</p>
           </label>
         </div>
 
@@ -957,7 +645,7 @@ export default function PostPage(): JSX.Element {
                 </div>
                 <button
                   onClick={(): void => removeMediaFile(mediaFile.id)}
-                  className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-2 right-2 p-1.5 bg-red-500/80 backdrop-blur-sm text-white border border-red-400/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                   aria-label="Remove file"
                 >
                   <svg
@@ -984,39 +672,39 @@ export default function PostPage(): JSX.Element {
       </section>
 
       {/* Scheduling Options */}
-      <section className="bg-white rounded-lg shadow p-5">
+      <section className="glass-card rounded-lg shadow-xl p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-medium">Schedule Settings</h2>
+          <h2 className="font-medium text-white drop-shadow-md">Schedule Settings</h2>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={useSchedule}
               onChange={(e): void => setUseSchedule(e.target.checked)}
-              className="w-4 h-4"
+              className="w-4 h-4 accent-white/50"
             />
-            <span className="text-sm">Schedule Post</span>
+            <span className="text-sm text-white/90">Schedule Post</span>
           </label>
         </div>
 
         {useSchedule && (
           <div className="grid grid-cols-2 gap-4 mt-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Schedule Date</label>
+              <label className="block text-sm font-medium mb-2 text-white/90">Schedule Date</label>
               <input
                 type="date"
                 value={scheduleDate}
                 onChange={(e): void => setScheduleDate(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg"
+                className="glass-input w-full px-3 py-2 rounded-lg text-white"
                 min={new Date().toISOString().split("T")[0]}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Schedule Time</label>
+              <label className="block text-sm font-medium mb-2 text-white/90">Schedule Time</label>
               <input
                 type="time"
                 value={scheduleTime}
                 onChange={(e): void => setScheduleTime(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg"
+                className="glass-input w-full px-3 py-2 rounded-lg text-white"
               />
             </div>
           </div>
@@ -1024,12 +712,12 @@ export default function PostPage(): JSX.Element {
       </section>
 
       {/* Post Button */}
-      <section className="bg-white rounded-lg shadow p-5">
+      <section className="glass-card rounded-lg shadow-xl p-5">
         {useSchedule ? (
           <button
             onClick={(): void => void schedulePost()}
             disabled={!isUnlocked || scheduling || mediaFiles.length === 0}
-            className="w-full px-5 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+            className="w-full px-5 py-3 rounded-lg bg-green-500/80 hover:bg-green-500 backdrop-blur-sm text-white border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-medium shadow-lg transition-all"
           >
             {scheduling
               ? "Scheduling..."
@@ -1041,7 +729,7 @@ export default function PostPage(): JSX.Element {
           <button
             onClick={(): void => void publish()}
             disabled={!isUnlocked || publishing || mediaFiles.length === 0}
-            className="w-full px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+            className="w-full px-5 py-3 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-white border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-medium shadow-lg transition-all"
           >
             {publishing
               ? "Publishing..."

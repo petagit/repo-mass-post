@@ -135,7 +135,7 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
           value={url}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>): void => setUrl(e.target.value)}
           placeholder={placeholder}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-y min-h-[120px]"
+          className="glass-input w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400/50 focus:border-red-400/50 resize-y min-h-[120px] text-white placeholder-white/60"
           disabled={loading}
           autoFocus={autoFocus}
           rows={8}
@@ -143,31 +143,31 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
         <button
           type="submit"
           disabled={loading || !url.trim()}
-          className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-lg transition-colors"
+          className="w-full bg-red-500/80 hover:bg-red-500 backdrop-blur-sm disabled:bg-gray-500/50 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-lg transition-all border border-red-400/50 shadow-lg"
         >
           {loading ? "Processing…" : `${buttonText}${urlCount > 0 ? ` (${urlCount} link${urlCount !== 1 ? "s" : ""} found)` : ""}`}
         </button>
       </form>
 
       {result && (
-        <div className="mt-6 bg-white rounded-lg shadow p-5">
+        <div className="mt-6 glass-card rounded-lg shadow-xl p-5">
           {result.success ? (
             <div className="space-y-5">
               {result.resolvedUrl && (
-                <div className="pb-3 border-b">
-                  <div className="text-sm text-gray-600 mb-1">Resolved URL:</div>
-                  <div className="text-xs text-blue-600 break-all">{result.resolvedUrl}</div>
+                <div className="pb-3 border-b border-white/20">
+                  <div className="text-sm text-white/90 mb-1">Resolved URL:</div>
+                  <div className="text-xs text-blue-200 break-all">{result.resolvedUrl}</div>
                 </div>
               )}
 
               {result.testedVideoUrl && result.testResult && (
-                <div className="pb-3 border-b">
-                  <div className="text-sm font-medium mb-2">Video URL Test Result:</div>
-                  <div className="text-xs text-blue-600 break-all mb-2">{result.testedVideoUrl}</div>
-                  <div className="text-xs space-y-1">
+                <div className="pb-3 border-b border-white/20">
+                  <div className="text-sm font-medium mb-2 text-white">Video URL Test Result:</div>
+                  <div className="text-xs text-blue-200 break-all mb-2">{result.testedVideoUrl}</div>
+                  <div className="text-xs space-y-1 text-white/90">
                     <div>
                       <span className="font-medium">Status:</span>{" "}
-                      <span className={result.testResult.accessible ? "text-green-600" : "text-red-600"}>
+                      <span className={result.testResult.accessible ? "text-green-300" : "text-red-300"}>
                         {result.testResult.status} {result.testResult.accessible ? "✓ Accessible" : "✗ Failed"}
                       </span>
                     </div>
@@ -178,8 +178,8 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                     )}
                     {result.testResult.headers && Object.keys(result.testResult.headers).length > 0 && (
                       <details className="mt-2">
-                        <summary className="cursor-pointer text-gray-500">Response Headers</summary>
-                        <pre className="mt-1 p-2 bg-gray-50 rounded text-xs overflow-auto">
+                        <summary className="cursor-pointer text-white/70">Response Headers</summary>
+                        <pre className="mt-1 p-2 glass-input rounded text-xs overflow-auto text-white/90">
                           {JSON.stringify(result.testResult.headers, null, 2)}
                         </pre>
                       </details>
@@ -188,8 +188,8 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                 </div>
               )}
 
-              <div className="flex items-center justify-between pb-3 border-b gap-2 flex-wrap">
-                <div className="text-gray-700 flex items-center gap-4">
+              <div className="flex items-center justify-between pb-3 border-b border-white/20 gap-2 flex-wrap">
+                <div className="text-white flex items-center gap-4">
                   <span className="font-medium">{result.imageLinks.length} Images</span>
                   <span className="font-medium">{result.videoLinks.length} Videos</span>
                 </div>
@@ -197,7 +197,7 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                   <div className="flex items-center gap-2">
                     <button
                       onClick={copyAll}
-                      className="px-3 py-2 text-sm rounded bg-gray-100 hover:bg-gray-200"
+                      className="px-3 py-2 text-sm rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border border-white/30 transition-all"
                     >
                       {copiedKey === "all" ? "Copied!" : "Copy All Links"}
                     </button>
@@ -207,15 +207,15 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
 
               {result.imageLinks.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Images</h3>
+                  <h3 className="text-lg font-semibold text-white">Images</h3>
                   {result.imageLinks.map((link: string, idx: number) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                      <span className="text-xs text-gray-500 min-w-[28px]">#{idx + 1}</span>
+                    <div key={idx} className="flex items-center gap-2 p-2 glass-input rounded">
+                      <span className="text-xs text-white/70 min-w-[28px]">#{idx + 1}</span>
                       <a
                         href={link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 text-sm text-blue-600 hover:text-blue-800 truncate"
+                        className="flex-1 text-sm text-blue-200 hover:text-blue-100 truncate"
                       >
                         {link}
                       </a>
@@ -223,14 +223,14 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                         onClick={(): void => {
                           void copyToClipboard(link, `img-${idx}`);
                         }}
-                        className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200"
+                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border border-white/30 transition-all"
                         title="Copy"
                       >
                         {copiedKey === `img-${idx}` ? "Copied" : "Copy"}
                       </button>
                       <button
                         onClick={(): void => downloadLink(link)}
-                        className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200"
+                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border border-white/30 transition-all"
                         title="Download"
                       >
                         Download
@@ -242,15 +242,15 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
 
               {result.videoLinks.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">Videos</h3>
+                  <h3 className="text-lg font-semibold text-white">Videos</h3>
                   {result.videoLinks.map((link: string, idx: number) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                      <span className="text-xs text-gray-500 min-w-[28px]">#{idx + 1}</span>
+                    <div key={idx} className="flex items-center gap-2 p-2 glass-input rounded">
+                      <span className="text-xs text-white/70 min-w-[28px]">#{idx + 1}</span>
                       <a
                         href={link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 text-sm text-blue-600 hover:text-blue-800 truncate"
+                        className="flex-1 text-sm text-blue-200 hover:text-blue-100 truncate"
                       >
                         {link}
                       </a>
@@ -258,14 +258,14 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                         onClick={(): void => {
                           void copyToClipboard(link, `vid-${idx}`);
                         }}
-                        className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200"
+                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border border-white/30 transition-all"
                         title="Copy"
                       >
                         {copiedKey === `vid-${idx}` ? "Copied" : "Copy"}
                       </button>
                       <button
                         onClick={(): void => downloadLink(link)}
-                        className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200"
+                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border border-white/30 transition-all"
                         title="Download"
                       >
                         Download
@@ -276,19 +276,19 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
               )}
 
               {result.imageLinks.length === 0 && result.videoLinks.length === 0 && (
-                <div className="text-center text-gray-600 py-8">No media found.</div>
+                <div className="text-center text-white/80 py-8">No media found.</div>
               )}
 
               {Array.isArray(result.debugUrls) && result.debugUrls.length > 0 && (
                 <details className="mt-4 text-left">
-                  <summary className="cursor-pointer text-xs text-gray-500">
+                  <summary className="cursor-pointer text-xs text-white/70">
                     Debug URLs ({result.debugUrls.length})
                   </summary>
-                  <div className="mt-2 p-2 bg-gray-50 rounded border max-h-48 overflow-auto text-xs text-gray-700 space-y-1">
+                  <div className="mt-2 p-2 glass-input rounded border border-white/20 max-h-48 overflow-auto text-xs text-white/90 space-y-1">
                     {result.debugUrls.map((u: string, i: number) => (
                       <div key={i} className="flex items-center gap-2">
                         <a
-                          className="flex-1 truncate text-blue-600 hover:text-blue-800"
+                          className="flex-1 truncate text-blue-200 hover:text-blue-100"
                           href={u}
                           target="_blank"
                           rel="noreferrer"
@@ -299,7 +299,7 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                           onClick={(): void => {
                             void copyToClipboard(u, `dbg-${i}`);
                           }}
-                          className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200"
+                          className="px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border border-white/30 transition-all"
                         >
                           {copiedKey === `dbg-${i}` ? "Copied" : "Copy"}
                         </button>
@@ -311,23 +311,23 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
             </div>
           ) : (
             <div className="text-center py-8">
-              <div className="text-red-500 font-semibold mb-2">Failed to Extract Content</div>
-              <div className="text-gray-600 text-sm">{result.error || "Unknown error"}</div>
+              <div className="text-red-300 font-semibold mb-2">Failed to Extract Content</div>
+              <div className="text-white/80 text-sm">{result.error || "Unknown error"}</div>
               {result.resolvedUrl && (
-                <div className="mt-3 text-xs text-gray-500">
-                  Resolved URL: <span className="text-blue-600 break-all">{result.resolvedUrl}</span>
+                <div className="mt-3 text-xs text-white/70">
+                  Resolved URL: <span className="text-blue-200 break-all">{result.resolvedUrl}</span>
                 </div>
               )}
               {Array.isArray(result.debugUrls) && result.debugUrls.length > 0 && (
                 <details className="mt-4 text-left inline-block max-w-full">
-                  <summary className="cursor-pointer text-xs text-gray-500">
+                  <summary className="cursor-pointer text-xs text-white/70">
                     Debug candidates ({result.debugUrls.length})
                   </summary>
-                  <div className="mt-2 p-2 bg-gray-50 rounded border max-h-48 overflow-auto text-xs text-gray-700 space-y-1">
+                  <div className="mt-2 p-2 glass-input rounded border border-white/20 max-h-48 overflow-auto text-xs text-white/90 space-y-1">
                     {result.debugUrls.slice(0, 20).map((u: string, i: number) => (
                       <div key={i} className="flex items-center gap-2">
                         <a
-                          className="flex-1 truncate text-blue-600 hover:text-blue-800"
+                          className="flex-1 truncate text-blue-200 hover:text-blue-100"
                           href={u}
                           target="_blank"
                           rel="noreferrer"
@@ -338,7 +338,7 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                           onClick={(): void => {
                             void copyToClipboard(u, `dbg-${i}`);
                           }}
-                          className="px-2 py-0.5 rounded bg-gray-100 hover:bg-gray-200"
+                          className="px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border border-white/30 transition-all"
                         >
                           {copiedKey === `dbg-${i}` ? "Copied" : "Copy"}
                         </button>

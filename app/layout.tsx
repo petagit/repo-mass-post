@@ -15,7 +15,7 @@ export default function RootLayout({
 }): JSX.Element {
   return (
     <html lang="en">
-      <body className="min-h-dvh bg-gray-50 text-gray-900">
+      <body className="min-h-dvh text-gray-900">
         <Navbar />
         <Toaster position="top-right" />
         {children}

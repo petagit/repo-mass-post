@@ -12,6 +12,11 @@ interface NavItem {
 export default function Navbar(): JSX.Element {
   const pathname = usePathname();
 
+  // Hide navbar on /post page
+  if (pathname === "/post") {
+    return <></>;
+  }
+
   const navItems: NavItem[] = [
     { href: "/", label: "Home" },
     { href: "/post", label: "Post" },
@@ -20,12 +25,12 @@ export default function Navbar(): JSX.Element {
   ];
 
   return (
-    <nav className="bg-white border-b border-gray-200 shadow-sm">
+    <nav className="glass-strong border-b border-white/20 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo/Brand */}
           <div className="flex-shrink-0">
-            <Link href="/" className="text-xl font-semibold text-gray-900 hover:text-gray-700 transition-colors">
+            <Link href="/" className="text-xl font-semibold text-white hover:text-white/90 transition-colors drop-shadow-lg">
               XHS Poster
             </Link>
           </div>
@@ -42,7 +47,7 @@ export default function Navbar(): JSX.Element {
                     href={item.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/20 rounded-md transition-all backdrop-blur-sm"
                   >
                     {item.label}
                   </a>
@@ -53,10 +58,10 @@ export default function Navbar(): JSX.Element {
                 <Link
                   key={item.href}
                   href={item.href as any}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all backdrop-blur-sm ${
                     isActive
-                      ? "bg-gray-100 text-gray-900"
-                      : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                      ? "bg-white/30 text-white shadow-lg"
+                      : "text-white/90 hover:text-white hover:bg-white/20"
                   }`}
                 >
                   {item.label}
