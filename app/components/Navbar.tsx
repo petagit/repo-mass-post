@@ -31,7 +31,7 @@ export default function Navbar(): JSX.Element {
         <div className="flex justify-between items-center h-16">
           {/* Logo/Brand */}
           <div className="flex-shrink-0">
-            <Link href="/" className="text-xl font-semibold text-white hover:text-white/90 transition-colors drop-shadow-lg">
+            <Link href="/" className="text-xl font-semibold text-theme-primary hover:text-theme-primary/90 transition-colors drop-shadow-lg">
               XHS Poster
             </Link>
           </div>
@@ -49,7 +49,7 @@ export default function Navbar(): JSX.Element {
                     href={item.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/20 rounded-md transition-all backdrop-blur-sm"
+                    className="px-4 py-2 text-sm font-medium text-theme-primary/90 hover:text-theme-primary hover:bg-white/20 rounded-md transition-all backdrop-blur-sm"
                   >
                     {item.label}
                   </a>
@@ -62,8 +62,8 @@ export default function Navbar(): JSX.Element {
                   href={item.href as any}
                   className={`px-4 py-2 text-sm font-medium rounded-md transition-all backdrop-blur-sm ${
                     isActive
-                      ? "bg-white/30 text-white shadow-lg"
-                      : "text-white/90 hover:text-white hover:bg-white/20"
+                      ? "bg-white/30 text-theme-primary shadow-lg"
+                      : "text-theme-primary/90 hover:text-theme-primary hover:bg-white/20"
                   }`}
                 >
                   {item.label}

@@ -340,17 +340,17 @@ export default function ExtractImagesPage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto min-h-screen">
-      <h1 className="text-2xl font-semibold text-white drop-shadow-lg">Extract Images from Links</h1>
+      <h1 className="text-2xl font-semibold text-theme-primary drop-shadow-lg">Extract Images from Links</h1>
       
       <section className="glass-card rounded-lg shadow-xl p-5">
-        <h2 className="font-medium mb-3 text-white drop-shadow-md">Enter URLs</h2>
-        <p className="text-sm text-white/90 mb-3">
+        <h2 className="font-medium mb-3 text-theme-primary drop-shadow-md">Enter URLs</h2>
+        <p className="text-sm text-theme-primary/90 mb-3">
           Paste one or more URLs (one per line). Images will be extracted and grouped by post.
         </p>
         <textarea
           value={urls}
           onChange={(e): void => setUrls(e.target.value)}
-          className="glass-input w-full min-h-32 resize-y px-3 py-2 rounded-lg font-mono text-sm text-white placeholder-white/60"
+          className="glass-input w-full min-h-32 resize-y px-3 py-2 rounded-lg font-mono text-sm text-theme-primary placeholder-theme-muted"
           placeholder="https://www.xiaohongshu.com/explore/...
 https://xhslink.com/..."
           disabled={loading}
@@ -358,7 +358,7 @@ https://xhslink.com/..."
         <button
           onClick={(): void => void extractImages()}
           disabled={loading || !urls.trim()}
-          className="mt-3 px-5 py-2 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-white border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
+          className="mt-3 px-5 py-2 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
         >
           {loading ? "Extracting..." : "Extract Images"}
         </button>
@@ -367,12 +367,12 @@ https://xhslink.com/..."
       {result && (
         <section className="glass-card rounded-lg shadow-xl p-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium text-white drop-shadow-md">Preview</h2>
+            <h2 className="font-medium text-theme-primary drop-shadow-md">Preview</h2>
             {result.success && result.posts.some((post) => post.images.length > 0) && (
               <button
                 onClick={(): void => void downloadImages()}
                 disabled={downloading}
-                className="px-5 py-2 rounded-lg bg-green-500/80 hover:bg-green-500 backdrop-blur-sm text-white border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
+                className="px-5 py-2 rounded-lg bg-green-500/80 hover:bg-green-500 backdrop-blur-sm text-theme-primary border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
               >
                 {downloading ? "Downloading..." : "Download All as ZIP"}
               </button>
@@ -389,10 +389,10 @@ https://xhslink.com/..."
             {result.posts.map((post, postIndex) => (
               <div key={postIndex} className="glass border border-white/20 rounded-lg p-4 backdrop-blur-sm">
                 <div className="mb-3">
-                  <h3 className="font-medium text-sm text-white mb-1">
+                  <h3 className="font-medium text-sm text-theme-primary mb-1">
                     Post {postIndex + 1}
                     {post.title && (
-                      <span className="text-white/70 ml-2">({post.title})</span>
+                      <span className="text-theme-primary/70 ml-2">({post.title})</span>
                     )}
                   </h3>
                   <a
@@ -451,7 +451,7 @@ https://xhslink.com/..."
                               />
                               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center rounded">
                                 <svg
-                                  className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="w-6 h-6 text-theme-primary opacity-0 group-hover:opacity-100 transition-opacity"
                                   fill="none"
                                   stroke="currentColor"
                                   viewBox="0 0 24 24"
@@ -475,20 +475,20 @@ https://xhslink.com/..."
                         })}
                       </div>
                       {visibleImages.length < post.images.length && (
-                        <div className="text-xs text-white/60 mt-2">
+                        <div className="text-xs text-theme-primary/60 mt-2">
                           {visibleImages.length} of {post.images.length} images shown ({post.images.length - visibleImages.length} failed to load)
                         </div>
                       )}
                     </>
                   ) : (
-                    <div className="text-sm text-white/80">
+                    <div className="text-sm text-theme-primary/80">
                       All {post.images.length} image{post.images.length !== 1 ? "s" : ""} failed to load
                     </div>
                   );
                 })() : (
-                  <div className="text-sm text-white/80">No images found</div>
+                  <div className="text-sm text-theme-primary/80">No images found</div>
                 )}
-                <div className="text-xs text-white/70 mt-2">
+                <div className="text-xs text-theme-primary/70 mt-2">
                   {post.images.length} image{post.images.length !== 1 ? "s" : ""} total
                 </div>
               </div>
@@ -497,7 +497,7 @@ https://xhslink.com/..."
 
           {result.success && (
             <div className="mt-4 pt-4 border-t border-white/20">
-              <div className="text-sm text-white/90">
+              <div className="text-sm text-theme-primary/90">
                 <div className="flex justify-between">
                   <span>Total Posts:</span>
                   <span className="font-semibold">{result.posts.length}</span>
@@ -517,10 +517,10 @@ https://xhslink.com/..."
       {result && result.success && result.posts.some((post) => post.images.length > 0) && (
         <section className="glass-card rounded-lg shadow-xl p-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium text-white drop-shadow-md">All Image Links</h2>
+            <h2 className="font-medium text-theme-primary drop-shadow-md">All Image Links</h2>
             <button
               onClick={(): void => void copyAllLinks()}
-              className="px-4 py-2 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-white border border-blue-400/50 text-sm disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
+              className="px-4 py-2 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-theme-primary border border-blue-400/50 text-sm disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
             >
               {copiedKey === "all" ? "Copied!" : "Copy All Links"}
             </button>
@@ -559,11 +559,11 @@ https://xhslink.com/..."
                       key={linkKey}
                       className="p-3 hover:bg-white/10 transition-all flex items-start gap-3"
                     >
-                      <div className="flex-shrink-0 w-8 h-8 rounded bg-white/20 backdrop-blur-sm flex items-center justify-center text-xs text-white font-medium border border-white/30">
+                      <div className="flex-shrink-0 w-8 h-8 rounded bg-white/20 backdrop-blur-sm flex items-center justify-center text-xs text-theme-primary font-medium border border-white/30">
                         {index + 1}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs text-white/70 mb-1">
+                        <div className="text-xs text-theme-primary/70 mb-1">
                           Post {item.postIndex + 1}, Image {item.imgIndex + 1}
                           {item.postTitle && (
                             <span className="ml-2">({item.postTitle})</span>
@@ -586,7 +586,7 @@ https://xhslink.com/..."
                           e.stopPropagation();
                           void copyToClipboard(item.url, linkKey);
                         }}
-                        className="flex-shrink-0 px-3 py-1.5 text-sm rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white border border-white/30 transition-all"
+                        className="flex-shrink-0 px-3 py-1.5 text-sm rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-theme-primary border border-white/30 transition-all"
                         title="Copy link"
                       >
                         {isCopied ? (
@@ -632,7 +632,7 @@ https://xhslink.com/..."
             </div>
           </div>
 
-          <div className="mt-3 text-xs text-white/70 text-center">
+          <div className="mt-3 text-xs text-theme-primary/70 text-center">
             {result.posts.reduce((sum, post) => {
               const imageCount = post.images.filter((url) => isImageLink(url)).length;
               return sum + imageCount;

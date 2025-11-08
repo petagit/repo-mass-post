@@ -251,10 +251,10 @@ export default function Page() {
       {/* Main content */}
       <main className="flex-1 max-w-3xl w-full">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-semibold text-white drop-shadow-lg">XHS → Post-Bridge</h1>
+          <h1 className="text-2xl font-semibold text-theme-primary drop-shadow-lg">XHS → Post-Bridge</h1>
           <Link
             href="/extract-images"
-            className="px-4 py-2 text-sm font-medium text-white bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-lg transition-all shadow-lg"
+            className="px-4 py-2 text-sm font-medium text-theme-primary bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-lg transition-all shadow-lg"
           >
             Extract Images
           </Link>
@@ -262,10 +262,10 @@ export default function Page() {
         <div className="space-y-6">
         <section className="glass-card rounded-lg shadow-xl p-5 border-2 border-red-400/50">
           <div className="flex items-center gap-2 mb-3">
-            <h2 className="font-medium text-white drop-shadow-md">1) Extract from Xiaohongshu (Direct Method)</h2>
+            <h2 className="font-medium text-theme-primary drop-shadow-md">1) Extract from Xiaohongshu (Direct Method)</h2>
             <span className="px-2 py-1 text-xs bg-green-500/30 backdrop-blur-sm text-green-100 border border-green-400/50 rounded-full font-semibold">Recommended</span>
           </div>
-          <p className="text-sm text-white/90 mb-3 drop-shadow-sm">
+          <p className="text-sm text-theme-primary/90 mb-3 drop-shadow-sm">
             Follows shortened link and extracts video URLs directly from XHS page, then tests with curl-like headers to verify accessibility.
           </p>
           <XHSdownloadDirect
@@ -284,12 +284,12 @@ export default function Page() {
         </section>
 
         <details className="glass-card rounded-lg shadow-xl p-5">
-          <summary className="font-medium mb-3 cursor-pointer text-white/90 hover:text-white drop-shadow-sm">
+          <summary className="font-medium mb-3 cursor-pointer text-theme-primary/90 hover:text-theme-primary drop-shadow-sm">
             Alternative Methods (Click to expand)
           </summary>
           <div className="space-y-6 mt-4">
             <section>
-              <h3 className="font-medium mb-3 text-sm text-white/90">1a) Standard extractor (via kukutool)</h3>
+              <h3 className="font-medium mb-3 text-sm text-theme-primary/90">1a) Standard extractor (via kukutool)</h3>
               <XHSdownload
                 className=""
                 onComplete={(r): void => {
@@ -301,8 +301,8 @@ export default function Page() {
             </section>
 
             <section>
-              <h3 className="font-medium mb-3 text-sm text-white/90">1b) Captured-only extractor (debug)</h3>
-              <p className="text-xs text-white/80 mb-3">Uses only the headers/body from <code className="bg-white/20 px-1 rounded">api_call</code> to hit kukutool directly.</p>
+              <h3 className="font-medium mb-3 text-sm text-theme-primary/90">1b) Captured-only extractor (debug)</h3>
+              <p className="text-xs text-theme-primary/80 mb-3">Uses only the headers/body from <code className="bg-white/20 px-1 rounded">api_call</code> to hit kukutool directly.</p>
               <XHSdownloadCaptured
                 className=""
                 onComplete={(r): void => {
@@ -316,7 +316,7 @@ export default function Page() {
         </details>
 
         <section className="glass-card rounded-lg shadow-xl p-5">
-          <h2 className="font-medium mb-3 text-white drop-shadow-md">2) Choose destinations</h2>
+          <h2 className="font-medium mb-3 text-theme-primary drop-shadow-md">2) Choose destinations</h2>
           <div className="flex flex-wrap gap-3">
             {destinations.map((d) => (
               <button
@@ -324,8 +324,8 @@ export default function Page() {
                 onClick={(): void => toggle(d.id)}
                 className={`px-3 py-2 rounded-full border backdrop-blur-sm transition-all ${
                   selected.includes(d.id)
-                    ? "bg-white/40 text-white border-white/50 shadow-lg"
-                    : "bg-white/20 text-white/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                    ? "bg-white/40 text-theme-primary border-white/50 shadow-lg"
+                    : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
                 }`}
                 disabled={loadingDest}
                 aria-pressed={selected.includes(d.id)}
@@ -334,7 +334,7 @@ export default function Page() {
               </button>
             ))}
             {destinations.length === 0 && (
-              <div className="text-sm text-white/80">
+              <div className="text-sm text-theme-primary/80">
                 {loadingDest ? "Loading…" : destError ? destError : "No accounts available"}
               </div>
             )}
@@ -343,7 +343,7 @@ export default function Page() {
 
         <section className="glass-card rounded-lg shadow-xl p-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium text-white drop-shadow-md">3) Schedule Settings</h2>
+            <h2 className="font-medium text-theme-primary drop-shadow-md">3) Schedule Settings</h2>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -351,7 +351,7 @@ export default function Page() {
                 onChange={(e): void => setUseBulkSchedule(!e.target.checked)}
                 className="w-4 h-4 accent-white/50"
               />
-              <span className="text-sm text-white/90">Immediate Post</span>
+              <span className="text-sm text-theme-primary/90">Immediate Post</span>
             </label>
           </div>
 
@@ -360,7 +360,7 @@ export default function Page() {
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-white/90">Bulk Caption</label>
+                    <label className="block text-sm font-medium text-theme-primary/90">Bulk Caption</label>
                     <button
                       onClick={(): void => {
                         // Apply bulk caption to all videos
@@ -372,7 +372,7 @@ export default function Page() {
                         toast.success(`Applied caption to ${mediaUrls.length} video${mediaUrls.length !== 1 ? "s" : ""}`);
                       }}
                       disabled={mediaUrls.length === 0}
-                      className="px-3 py-1 text-xs rounded bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-white border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed transition-all"
+                      className="px-3 py-1 text-xs rounded bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed transition-all"
                     >
                       Apply
                     </button>
@@ -380,39 +380,39 @@ export default function Page() {
                   <textarea
                     value={bulkCaption}
                     onChange={(e): void => setBulkCaption(e.target.value)}
-                    className="glass-input w-full min-h-24 resize-y px-3 py-2 rounded-lg text-white placeholder-white/60"
+                    className="glass-input w-full min-h-24 resize-y px-3 py-2 rounded-lg text-theme-primary placeholder-theme-muted"
                     placeholder="Enter a caption to apply to all videos..."
                     maxLength={2200}
                   />
-                  <div className="text-xs text-white/70 mt-1 text-right">
+                  <div className="text-xs text-theme-primary/70 mt-1 text-right">
                     {bulkCaption.length}/2200
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-white/90">Start Date</label>
+                    <label className="block text-sm font-medium mb-2 text-theme-primary/90">Start Date</label>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e): void => setStartDate(e.target.value)}
-                      className="glass-input w-full px-3 py-2 rounded-lg text-white"
+                      className="glass-input w-full px-3 py-2 rounded-lg text-theme-primary"
                       min={new Date().toISOString().split("T")[0]}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-white/90">Start Time</label>
+                    <label className="block text-sm font-medium mb-2 text-theme-primary/90">Start Time</label>
                     <input
                       type="time"
                       value={startTime}
                       onChange={(e): void => setStartTime(e.target.value)}
-                      className="glass-input w-full px-3 py-2 rounded-lg text-white"
+                      className="glass-input w-full px-3 py-2 rounded-lg text-theme-primary"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-white/90">
+                  <label className="block text-sm font-medium mb-2 text-theme-primary/90">
                     Videos per day (1-24)
                   </label>
                   <select
@@ -426,7 +426,7 @@ export default function Page() {
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-white/70 mt-1">
+                  <p className="text-xs text-theme-primary/70 mt-1">
                     {mediaUrls.length > 0 && (
                       <>
                         {mediaUrls.length} video{mediaUrls.length !== 1 ? "s" : ""} will be scheduled over{" "}
@@ -441,7 +441,7 @@ export default function Page() {
                   <button
                     onClick={(): void => void bulkSchedule()}
                     disabled={scheduling || mediaUrls.length === 0}
-                    className="px-5 py-3 rounded-lg bg-green-500/80 hover:bg-green-500 backdrop-blur-sm text-white border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
+                    className="px-5 py-3 rounded-lg bg-green-500/80 hover:bg-green-500 backdrop-blur-sm text-theme-primary border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
                   >
                     {scheduling
                       ? `Scheduling ${mediaUrls.length} videos…`
@@ -456,7 +456,7 @@ export default function Page() {
                 type="text"
                 value={title}
                 onChange={(e): void => setTitle(e.target.value)}
-                className="glass-input w-full mb-3 px-3 py-2 rounded-lg text-white placeholder-white/60"
+                className="glass-input w-full mb-3 px-3 py-2 rounded-lg text-theme-primary placeholder-theme-muted"
                 placeholder="Enter a title (optional)"
               />
               <textarea
@@ -469,7 +469,7 @@ export default function Page() {
                 <button
                   onClick={(): void => void publish()}
                   disabled={publishing}
-                  className="px-5 py-3 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-white border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
+                  className="px-5 py-3 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
                 >
                   {publishing ? "Posting…" : "Post via Post-Bridge"}
                 </button>
@@ -480,8 +480,8 @@ export default function Page() {
 
         {mediaUrls.length > 0 && (
           <section className="glass-card rounded-lg shadow-xl p-5">
-            <h2 className="font-medium mb-3 text-white drop-shadow-md">Preview media URLs</h2>
-            <ul className="list-disc list-inside text-sm break-all space-y-1 text-white/90">
+            <h2 className="font-medium mb-3 text-theme-primary drop-shadow-md">Preview media URLs</h2>
+            <ul className="list-disc list-inside text-sm break-all space-y-1 text-theme-primary/90">
               {mediaUrls.map((u, i) => (
                 <li key={i}>{u}</li>
               ))}
@@ -495,7 +495,7 @@ export default function Page() {
       {useBulkSchedule && mediaUrls.length > 0 && (
         <aside className="w-full lg:w-80 flex-shrink-0">
           <div className="glass-card rounded-lg shadow-xl p-5 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
-            <h2 className="font-semibold text-lg mb-4 text-white drop-shadow-md">Schedule Preview</h2>
+            <h2 className="font-semibold text-lg mb-4 text-theme-primary drop-shadow-md">Schedule Preview</h2>
             <div className="space-y-3">
               {schedulePreview.map((item, idx) => {
                 const isVideo = /\.(mp4|mov|m3u8|mpd)(\?|$)/i.test(item.mediaUrl);
@@ -506,12 +506,12 @@ export default function Page() {
                     className="glass border border-white/20 rounded-lg p-3 hover:bg-white/10 transition-all backdrop-blur-sm"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <span className="text-xs font-medium text-white/80">
+                      <span className="text-xs font-medium text-theme-primary/80">
                         #{item.index}
                       </span>
                       <div className="text-right">
-                        <div className="text-sm font-semibold text-white">{item.date}</div>
-                        <div className="text-xs text-white/70">{item.time}</div>
+                        <div className="text-sm font-semibold text-theme-primary">{item.date}</div>
+                        <div className="text-xs text-theme-primary/70">{item.time}</div>
                       </div>
                     </div>
                     {/* Thumbnail with Preview Icon */}
@@ -546,7 +546,7 @@ export default function Page() {
                         {isVideo && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 opacity-0 group-hover:opacity-100 transition-opacity">
                             <svg
-                              className="w-6 h-6 text-white"
+                              className="w-6 h-6 text-theme-primary"
                               fill="currentColor"
                               viewBox="0 0 20 20"
                             >
@@ -560,7 +560,7 @@ export default function Page() {
                         onClick={(): void => {
                           window.open(item.mediaUrl, "_blank", "noopener,noreferrer");
                         }}
-                        className="p-2 rounded-lg bg-blue-500/30 hover:bg-blue-500/40 backdrop-blur-sm text-white border border-blue-400/50 transition-all flex-shrink-0"
+                        className="p-2 rounded-lg bg-blue-500/30 hover:bg-blue-500/40 backdrop-blur-sm text-theme-primary border border-blue-400/50 transition-all flex-shrink-0"
                         title="Open video/image in new tab"
                         aria-label="Preview media"
                       >
@@ -587,7 +587,7 @@ export default function Page() {
                     </div>
                     {/* Editable Caption */}
                     <div className="mt-2">
-                      <label className="block text-xs font-medium text-white/80 mb-1">Caption</label>
+                      <label className="block text-xs font-medium text-theme-primary/80 mb-1">Caption</label>
                       <textarea
                         value={item.caption}
                         onChange={(e): void => {
@@ -595,15 +595,15 @@ export default function Page() {
                           newCaptions.set(item.index - 1, e.target.value);
                           setIndividualCaptions(newCaptions);
                         }}
-                        className="glass-input w-full min-h-16 resize-y px-2 py-1 text-xs rounded-lg text-white placeholder-white/60"
+                        className="glass-input w-full min-h-16 resize-y px-2 py-1 text-xs rounded-lg text-theme-primary placeholder-theme-muted"
                         placeholder="Enter caption..."
                         maxLength={2200}
                       />
-                      <div className="text-xs text-white/60 mt-1 text-right">
+                      <div className="text-xs text-theme-primary/60 mt-1 text-right">
                         {item.caption.length}/2200
                       </div>
                     </div>
-                    <div className="mt-2 text-xs text-white/60 truncate">
+                    <div className="mt-2 text-xs text-theme-primary/60 truncate">
                       {item.mediaUrl.split("/").pop() || item.mediaUrl.slice(0, 30) + "..."}
                     </div>
                   </div>
@@ -611,7 +611,7 @@ export default function Page() {
               })}
             </div>
             <div className="mt-4 pt-4 border-t border-white/20">
-              <div className="text-sm text-white/90">
+              <div className="text-sm text-theme-primary/90">
                 <div className="flex justify-between mb-1">
                   <span>Total:</span>
                   <span className="font-semibold">{mediaUrls.length} video{mediaUrls.length !== 1 ? "s" : ""}</span>
