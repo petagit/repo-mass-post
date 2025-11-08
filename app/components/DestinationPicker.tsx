@@ -29,7 +29,7 @@ export default function DestinationPicker(props: DestinationPickerProps): JSX.El
         </button>
       ))}
       {destinations.length === 0 && (
-        <div className="text-sm text-gray-500">{disabled ? "Loading…" : "No accounts available"}</div>
+        <div className="text-sm text-theme-muted">{disabled ? "Loading…" : "No accounts available"}</div>
       )}
     </div>
   );

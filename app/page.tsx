@@ -538,7 +538,7 @@ export default function Page() {
                             loading="lazy"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                          <div className="w-full h-full flex items-center justify-center text-xs text-theme-muted">
                             Preview unavailable
                           </div>
                         )}

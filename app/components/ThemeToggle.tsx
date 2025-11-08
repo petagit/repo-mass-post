@@ -9,7 +9,7 @@ export default function ThemeToggle(): JSX.Element {
   return (
     <button
       onClick={toggleTheme}
-      className="p-2 rounded-lg glass-button text-white dark:text-white text-gray-900 hover:opacity-80 transition-all"
+      className="p-2 rounded-lg glass-button text-theme-primary hover:opacity-80 transition-all"
       aria-label={`Switch to ${isLight ? "dark" : "light"} mode`}
       title={`Switch to ${isLight ? "dark" : "light"} mode`}
     >
