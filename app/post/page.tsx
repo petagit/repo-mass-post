@@ -450,7 +450,7 @@ export default function PostPage(): JSX.Element {
       {/* Password Protection */}
       {!isUnlocked && (
         <section className="glass-card rounded-lg shadow-xl p-5 border-2 border-yellow-400/50">
-          <h2 className="font-medium mb-3 text-yellow-200 drop-shadow-md">🔒 Unlock Post Button</h2>
+          <h2 className="font-medium mb-3 text-theme-primary drop-shadow-md">🔒 Unlock Post Button</h2>
           <form onSubmit={handlePasswordSubmit} className="flex gap-3">
             <input
               type="password"
@@ -489,7 +489,7 @@ export default function PostPage(): JSX.Element {
             <textarea
               value={description}
               onChange={(e): void => setDescription(e.target.value)}
-              className="glass-input w-full min-h-24 resize-y px-3 py-2 rounded-lg text-theme-primary placeholder-white/60"
+              className="glass-input w-full min-h-24 resize-y px-3 py-2 rounded-lg text-theme-primary placeholder-theme-muted"
               placeholder="Write a caption or description..."
               maxLength={2200}
             />
@@ -505,7 +505,7 @@ export default function PostPage(): JSX.Element {
         {loadingDest ? (
           <div className="text-sm text-theme-primary/80 mb-3">Loading accounts...</div>
         ) : destError ? (
-          <div className="text-sm text-red-300 mb-3">{destError}</div>
+          <div className="text-sm text-theme-primary mb-3">{destError}</div>
         ) : null}
         {destinations.length > 0 && (
           <div className="space-y-3">
@@ -600,7 +600,7 @@ export default function PostPage(): JSX.Element {
             className="cursor-pointer flex flex-col items-center gap-3"
           >
             <svg
-              className="w-12 h-12 text-gray-400"
+              className="w-12 h-12 text-theme-muted"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -613,7 +613,7 @@ export default function PostPage(): JSX.Element {
               />
             </svg>
             <div>
-              <span className="text-blue-200 hover:text-blue-100 font-medium">
+              <span className="text-theme-primary font-medium">
                 Click to upload
               </span>
               <span className="text-theme-primary/80"> or drag and drop</span>
@@ -627,7 +627,7 @@ export default function PostPage(): JSX.Element {
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {mediaFiles.map((mediaFile) => (
               <div key={mediaFile.id} className="relative group">
-                <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 border">
+                <div className="aspect-square rounded-lg overflow-hidden bg-theme-surface border">
                   {mediaFile.type === "video" ? (
                     <video
                       src={mediaFile.preview}
@@ -662,7 +662,7 @@ export default function PostPage(): JSX.Element {
                     />
                   </svg>
                 </button>
-                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-theme-primary text-xs p-1 truncate">
+                <div className="absolute bottom-0 left-0 right-0 bg-theme-overlay text-theme-primary text-xs p-1 truncate">
                   {mediaFile.file.name}
                 </div>
               </div>
