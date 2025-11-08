@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import ThemeToggle from "./ThemeToggle";
 
 interface NavItem {
   href: string;
@@ -37,6 +38,7 @@ export default function Navbar(): JSX.Element {
 
           {/* Navigation Items */}
           <div className="flex items-center space-x-1">
+            <ThemeToggle />
             {navItems.map((item) => {
               const isActive = !item.external && pathname === item.href;
               

@@ -445,7 +445,7 @@ export default function PostPage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto min-h-screen">
-      <h1 className="text-2xl font-semibold text-white drop-shadow-lg">Post for me Tool</h1>
+      <h1 className="text-2xl font-semibold text-theme-primary drop-shadow-lg">Post for me Tool</h1>
 
       {/* Password Protection */}
       {!isUnlocked && (
@@ -457,12 +457,12 @@ export default function PostPage(): JSX.Element {
               value={password}
               onChange={(e): void => setPassword(e.target.value)}
               placeholder="Enter password to unlock"
-              className="glass-input flex-1 px-3 py-2 rounded-lg text-white placeholder-white/60"
+              className="glass-input flex-1 px-3 py-2 rounded-lg text-theme-primary placeholder-theme-muted"
               autoFocus
             />
             <button
               type="submit"
-              className="px-5 py-2 rounded-lg bg-yellow-500/80 hover:bg-yellow-500 backdrop-blur-sm text-white border border-yellow-400/50 shadow-lg transition-all"
+              className="px-5 py-2 rounded-lg bg-yellow-500/80 hover:bg-yellow-500 backdrop-blur-sm text-theme-primary border border-yellow-400/50 shadow-lg transition-all"
             >
               Unlock
             </button>
@@ -472,28 +472,28 @@ export default function PostPage(): JSX.Element {
 
       {/* Title and Description */}
       <section className="glass-card rounded-lg shadow-xl p-5">
-        <h2 className="font-medium mb-3 text-white drop-shadow-md">Post Details</h2>
+        <h2 className="font-medium mb-3 text-theme-primary drop-shadow-md">Post Details</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2 text-white/90">Title</label>
+            <label className="block text-sm font-medium mb-2 text-theme-primary/90">Title</label>
             <input
               type="text"
               value={title}
               onChange={(e): void => setTitle(e.target.value)}
-              className="glass-input w-full px-3 py-2 rounded-lg text-white placeholder-white/60"
+              className="glass-input w-full px-3 py-2 rounded-lg text-theme-primary placeholder-theme-muted"
               placeholder="Enter post title (optional)"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2 text-white/90">Description</label>
+            <label className="block text-sm font-medium mb-2 text-theme-primary/90">Description</label>
             <textarea
               value={description}
               onChange={(e): void => setDescription(e.target.value)}
-              className="glass-input w-full min-h-24 resize-y px-3 py-2 rounded-lg text-white placeholder-white/60"
+              className="glass-input w-full min-h-24 resize-y px-3 py-2 rounded-lg text-theme-primary placeholder-white/60"
               placeholder="Write a caption or description..."
               maxLength={2200}
             />
-            <div className="text-xs text-white/70 mt-1 text-right">
+            <div className="text-xs text-theme-primary/70 mt-1 text-right">
               {description.length}/2200
             </div>
           </div>
@@ -503,14 +503,14 @@ export default function PostPage(): JSX.Element {
       {/* Account Selection */}
       <section className="glass-card rounded-lg shadow-xl p-5">
         {loadingDest ? (
-          <div className="text-sm text-white/80 mb-3">Loading accounts...</div>
+          <div className="text-sm text-theme-primary/80 mb-3">Loading accounts...</div>
         ) : destError ? (
           <div className="text-sm text-red-300 mb-3">{destError}</div>
         ) : null}
         {destinations.length > 0 && (
           <div className="space-y-3">
             <div>
-              <h3 className="text-xs font-medium text-white/90 mb-2">Instagram</h3>
+              <h3 className="text-xs font-medium text-theme-primary/90 mb-2">Instagram</h3>
               <div className="flex flex-wrap gap-2">
                 {destinations
                   .filter((d) => d.platform === "instagram")
@@ -530,8 +530,8 @@ export default function PostPage(): JSX.Element {
                       }}
                       className={`px-3 py-2 rounded-full border-2 text-sm backdrop-blur-sm transition-all ${
                         selectedDestinations.includes(d.id)
-                          ? "bg-blue-500/60 text-white border-blue-400 shadow-lg shadow-blue-500/50 ring-2 ring-blue-400/50"
-                          : "bg-white/20 text-white/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          ? "bg-blue-500/60 text-theme-primary border-blue-400 shadow-lg shadow-blue-500/50 ring-2 ring-blue-400/50"
+                          : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
                       }`}
                     >
                       {d.handle}
@@ -541,7 +541,7 @@ export default function PostPage(): JSX.Element {
             </div>
             {destinations.some((d) => d.platform === "pinterest") && (
               <div>
-                <h3 className="text-xs font-medium text-white/90 mb-2">Pinterest</h3>
+                <h3 className="text-xs font-medium text-theme-primary/90 mb-2">Pinterest</h3>
                 <div className="flex flex-wrap gap-2">
                   {destinations
                     .filter((d) => d.platform === "pinterest")
@@ -557,8 +557,8 @@ export default function PostPage(): JSX.Element {
                         }}
                         className={`px-3 py-2 rounded-full border text-sm backdrop-blur-sm transition-all ${
                           selectedDestinations.includes(d.id)
-                            ? "bg-white/40 text-white border-white/50 shadow-lg"
-                            : "bg-white/20 text-white/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                            ? "bg-white/40 text-theme-primary border-white/50 shadow-lg"
+                            : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
                         }`}
                       >
                         {d.handle}
@@ -573,7 +573,7 @@ export default function PostPage(): JSX.Element {
 
       {/* Drag and Drop Area */}
       <section className="glass-card rounded-lg shadow-xl p-5">
-        <h2 className="font-medium mb-3 text-white drop-shadow-md">Media Files</h2>
+        <h2 className="font-medium mb-3 text-theme-primary drop-shadow-md">Media Files</h2>
         <div
           onDrop={handleDrop}
           onDragOver={(e): void => {
@@ -616,9 +616,9 @@ export default function PostPage(): JSX.Element {
               <span className="text-blue-200 hover:text-blue-100 font-medium">
                 Click to upload
               </span>
-              <span className="text-white/80"> or drag and drop</span>
+              <span className="text-theme-primary/80"> or drag and drop</span>
             </div>
-            <p className="text-sm text-white/70">Photos and videos (PNG, JPG, MP4, etc.)</p>
+            <p className="text-sm text-theme-primary/70">Photos and videos (PNG, JPG, MP4, etc.)</p>
           </label>
         </div>
 
@@ -645,7 +645,7 @@ export default function PostPage(): JSX.Element {
                 </div>
                 <button
                   onClick={(): void => removeMediaFile(mediaFile.id)}
-                  className="absolute top-2 right-2 p-1.5 bg-red-500/80 backdrop-blur-sm text-white border border-red-400/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                  className="absolute top-2 right-2 p-1.5 bg-red-500/80 backdrop-blur-sm text-theme-primary border border-red-400/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                   aria-label="Remove file"
                 >
                   <svg
@@ -662,7 +662,7 @@ export default function PostPage(): JSX.Element {
                     />
                   </svg>
                 </button>
-                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 truncate">
+                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-theme-primary text-xs p-1 truncate">
                   {mediaFile.file.name}
                 </div>
               </div>
@@ -674,7 +674,7 @@ export default function PostPage(): JSX.Element {
       {/* Scheduling Options */}
       <section className="glass-card rounded-lg shadow-xl p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-medium text-white drop-shadow-md">Schedule Settings</h2>
+          <h2 className="font-medium text-theme-primary drop-shadow-md">Schedule Settings</h2>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -682,29 +682,29 @@ export default function PostPage(): JSX.Element {
               onChange={(e): void => setUseSchedule(e.target.checked)}
               className="w-4 h-4 accent-white/50"
             />
-            <span className="text-sm text-white/90">Schedule Post</span>
+            <span className="text-sm text-theme-primary/90">Schedule Post</span>
           </label>
         </div>
 
         {useSchedule && (
           <div className="grid grid-cols-2 gap-4 mt-4">
             <div>
-              <label className="block text-sm font-medium mb-2 text-white/90">Schedule Date</label>
+              <label className="block text-sm font-medium mb-2 text-theme-primary/90">Schedule Date</label>
               <input
                 type="date"
                 value={scheduleDate}
                 onChange={(e): void => setScheduleDate(e.target.value)}
-                className="glass-input w-full px-3 py-2 rounded-lg text-white"
+                className="glass-input w-full px-3 py-2 rounded-lg text-theme-primary"
                 min={new Date().toISOString().split("T")[0]}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2 text-white/90">Schedule Time</label>
+              <label className="block text-sm font-medium mb-2 text-theme-primary/90">Schedule Time</label>
               <input
                 type="time"
                 value={scheduleTime}
                 onChange={(e): void => setScheduleTime(e.target.value)}
-                className="glass-input w-full px-3 py-2 rounded-lg text-white"
+                className="glass-input w-full px-3 py-2 rounded-lg text-theme-primary"
               />
             </div>
           </div>
@@ -717,7 +717,7 @@ export default function PostPage(): JSX.Element {
           <button
             onClick={(): void => void schedulePost()}
             disabled={!isUnlocked || scheduling || mediaFiles.length === 0}
-            className="w-full px-5 py-3 rounded-lg bg-green-500/80 hover:bg-green-500 backdrop-blur-sm text-white border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-medium shadow-lg transition-all"
+            className="w-full px-5 py-3 rounded-lg bg-green-500/80 hover:bg-green-500 backdrop-blur-sm text-theme-primary border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-medium shadow-lg transition-all"
           >
             {scheduling
               ? "Scheduling..."
@@ -729,7 +729,7 @@ export default function PostPage(): JSX.Element {
           <button
             onClick={(): void => void publish()}
             disabled={!isUnlocked || publishing || mediaFiles.length === 0}
-            className="w-full px-5 py-3 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-white border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-medium shadow-lg transition-all"
+            className="w-full px-5 py-3 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-medium shadow-lg transition-all"
           >
             {publishing
               ? "Publishing..."
