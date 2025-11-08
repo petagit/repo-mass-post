@@ -462,7 +462,7 @@ export default function PostPage(): JSX.Element {
             />
             <button
               type="submit"
-              className="px-5 py-2 rounded-lg bg-yellow-500/80 hover:bg-yellow-500 backdrop-blur-sm text-theme-primary border border-yellow-400/50 shadow-lg transition-all"
+              className="px-5 py-2 rounded-lg bg-yellow-500/80 hover:bg-yellow-500 text-theme-primary border border-yellow-400/50 shadow-lg transition-all"
             >
               Unlock
             </button>
@@ -528,7 +528,7 @@ export default function PostPage(): JSX.Element {
                             : [...prev, d.id]
                         );
                       }}
-                      className={`px-3 py-2 rounded-full border-2 text-sm backdrop-blur-sm transition-all ${
+                      className={`px-3 py-2 rounded-full border-2 text-sm transition-all ${
                         selectedDestinations.includes(d.id)
                           ? "bg-blue-500/60 text-theme-primary border-blue-400 shadow-lg shadow-blue-500/50 ring-2 ring-blue-400/50"
                           : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
@@ -555,7 +555,7 @@ export default function PostPage(): JSX.Element {
                               : [...prev, d.id]
                           );
                         }}
-                        className={`px-3 py-2 rounded-full border text-sm backdrop-blur-sm transition-all ${
+                        className={`px-3 py-2 rounded-full border text-sm transition-all ${
                           selectedDestinations.includes(d.id)
                             ? "bg-white/40 text-theme-primary border-white/50 shadow-lg"
                             : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
@@ -581,7 +581,7 @@ export default function PostPage(): JSX.Element {
             setIsDragging(true);
           }}
           onDragLeave={(): void => setIsDragging(false)}
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-all backdrop-blur-sm ${
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
             isDragging
               ? "border-blue-400/70 bg-blue-500/20"
               : "border-white/30 hover:border-white/50 bg-white/5"
@@ -645,7 +645,7 @@ export default function PostPage(): JSX.Element {
                 </div>
                 <button
                   onClick={(): void => removeMediaFile(mediaFile.id)}
-                  className="absolute top-2 right-2 p-1.5 bg-red-500/80 backdrop-blur-sm text-theme-primary border border-red-400/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                  className="absolute top-2 right-2 p-1.5 bg-red-500/80 text-theme-primary border border-red-400/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                   aria-label="Remove file"
                 >
                   <svg
@@ -717,7 +717,7 @@ export default function PostPage(): JSX.Element {
           <button
             onClick={(): void => void schedulePost()}
             disabled={!isUnlocked || scheduling || mediaFiles.length === 0}
-            className="w-full px-5 py-3 rounded-lg bg-green-500/80 hover:bg-green-500 backdrop-blur-sm text-theme-primary border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-medium shadow-lg transition-all"
+            className="w-full px-5 py-3 rounded-lg bg-green-500/80 hover:bg-green-500 text-theme-primary border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-medium shadow-lg transition-all"
           >
             {scheduling
               ? "Scheduling..."
@@ -729,7 +729,7 @@ export default function PostPage(): JSX.Element {
           <button
             onClick={(): void => void publish()}
             disabled={!isUnlocked || publishing || mediaFiles.length === 0}
-            className="w-full px-5 py-3 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-medium shadow-lg transition-all"
+            className="w-full px-5 py-3 rounded-lg bg-blue-500/80 hover:bg-blue-500 text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-medium shadow-lg transition-all"
           >
             {publishing
               ? "Publishing..."

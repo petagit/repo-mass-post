@@ -358,7 +358,7 @@ https://xhslink.com/..."
         <button
           onClick={(): void => void extractImages()}
           disabled={loading || !urls.trim()}
-          className="mt-3 px-5 py-2 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
+          className="mt-3 px-5 py-2 rounded-lg bg-blue-500/80 hover:bg-blue-500 text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
         >
           {loading ? "Extracting..." : "Extract Images"}
         </button>
@@ -372,7 +372,7 @@ https://xhslink.com/..."
               <button
                 onClick={(): void => void downloadImages()}
                 disabled={downloading}
-                className="px-5 py-2 rounded-lg bg-green-500/80 hover:bg-green-500 backdrop-blur-sm text-theme-primary border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
+                className="px-5 py-2 rounded-lg bg-green-500/80 hover:bg-green-500 text-theme-primary border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
               >
                 {downloading ? "Downloading..." : "Download All as ZIP"}
               </button>
@@ -380,14 +380,14 @@ https://xhslink.com/..."
           </div>
 
           {result.error && (
-            <div className="mb-4 p-3 bg-yellow-500/20 backdrop-blur-sm border border-yellow-400/50 rounded-lg text-sm text-yellow-200">
+            <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-400/50 rounded-lg text-sm text-yellow-200">
               {result.error}
             </div>
           )}
 
           <div className="space-y-6">
             {result.posts.map((post, postIndex) => (
-              <div key={postIndex} className="glass border border-white/20 rounded-lg p-4 backdrop-blur-sm">
+              <div key={postIndex} className="glass border border-white/20 rounded-lg p-4">
                 <div className="mb-3">
                   <h3 className="font-medium text-sm text-theme-primary mb-1">
                     Post {postIndex + 1}
@@ -520,7 +520,7 @@ https://xhslink.com/..."
             <h2 className="font-medium text-theme-primary drop-shadow-md">All Image Links</h2>
             <button
               onClick={(): void => void copyAllLinks()}
-              className="px-4 py-2 rounded-lg bg-blue-500/80 hover:bg-blue-500 backdrop-blur-sm text-theme-primary border border-blue-400/50 text-sm disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
+              className="px-4 py-2 rounded-lg bg-blue-500/80 hover:bg-blue-500 text-theme-primary border border-blue-400/50 text-sm disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
             >
               {copiedKey === "all" ? "Copied!" : "Copy All Links"}
             </button>
@@ -559,7 +559,7 @@ https://xhslink.com/..."
                       key={linkKey}
                       className="p-3 hover:bg-white/10 transition-all flex items-start gap-3"
                     >
-                      <div className="flex-shrink-0 w-8 h-8 rounded bg-white/20 backdrop-blur-sm flex items-center justify-center text-xs text-theme-primary font-medium border border-white/30">
+                      <div className="flex-shrink-0 w-8 h-8 rounded bg-white/20 flex items-center justify-center text-xs text-theme-primary font-medium border border-white/30">
                         {index + 1}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -586,7 +586,7 @@ https://xhslink.com/..."
                           e.stopPropagation();
                           void copyToClipboard(item.url, linkKey);
                         }}
-                        className="flex-shrink-0 px-3 py-1.5 text-sm rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-theme-primary border border-white/30 transition-all"
+                        className="flex-shrink-0 px-3 py-1.5 text-sm rounded bg-white/20 hover:bg-white/30 text-theme-primary border border-white/30 transition-all"
                         title="Copy link"
                       >
                         {isCopied ? (

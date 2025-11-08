@@ -49,7 +49,7 @@ export default function Navbar(): JSX.Element {
                     href={item.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 text-sm font-medium text-theme-primary/90 hover:text-theme-primary hover:bg-white/20 rounded-md transition-all backdrop-blur-sm"
+                    className="px-4 py-2 text-sm font-medium text-theme-primary/90 hover:text-theme-primary hover:bg-white/20 rounded-md transition-all"
                   >
                     {item.label}
                   </a>
@@ -60,7 +60,7 @@ export default function Navbar(): JSX.Element {
                 <Link
                   key={item.href}
                   href={item.href as any}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all backdrop-blur-sm ${
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
                     isActive
                       ? "bg-white/30 text-theme-primary shadow-lg"
                       : "text-theme-primary/90 hover:text-theme-primary hover:bg-white/20"

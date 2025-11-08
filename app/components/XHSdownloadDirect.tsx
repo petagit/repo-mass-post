@@ -143,7 +143,7 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
         <button
           type="submit"
           disabled={loading || !url.trim()}
-          className="w-full bg-red-500/80 hover:bg-red-500 backdrop-blur-sm disabled:bg-gray-500/50 disabled:cursor-not-allowed text-theme-primary font-medium py-3 px-6 rounded-lg transition-all border border-red-400/50 shadow-lg"
+          className="w-full bg-red-500/80 hover:bg-red-500 disabled:bg-gray-500/50 disabled:cursor-not-allowed text-theme-primary font-medium py-3 px-6 rounded-lg transition-all border border-red-400/50 shadow-lg"
         >
           {loading ? "Processing…" : `${buttonText}${urlCount > 0 ? ` (${urlCount} link${urlCount !== 1 ? "s" : ""} found)` : ""}`}
         </button>
@@ -197,7 +197,7 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                   <div className="flex items-center gap-2">
                     <button
                       onClick={copyAll}
-                      className="px-3 py-2 text-sm rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-theme-primary border border-white/30 transition-all"
+                      className="px-3 py-2 text-sm rounded bg-white/20 hover:bg-white/30 text-theme-primary border border-white/30 transition-all"
                     >
                       {copiedKey === "all" ? "Copied!" : "Copy All Links"}
                     </button>
@@ -223,14 +223,14 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                         onClick={(): void => {
                           void copyToClipboard(link, `img-${idx}`);
                         }}
-                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-theme-primary border border-white/30 transition-all"
+                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 text-theme-primary border border-white/30 transition-all"
                         title="Copy"
                       >
                         {copiedKey === `img-${idx}` ? "Copied" : "Copy"}
                       </button>
                       <button
                         onClick={(): void => downloadLink(link)}
-                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-theme-primary border border-white/30 transition-all"
+                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 text-theme-primary border border-white/30 transition-all"
                         title="Download"
                       >
                         Download
@@ -258,14 +258,14 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                         onClick={(): void => {
                           void copyToClipboard(link, `vid-${idx}`);
                         }}
-                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-theme-primary border border-white/30 transition-all"
+                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 text-theme-primary border border-white/30 transition-all"
                         title="Copy"
                       >
                         {copiedKey === `vid-${idx}` ? "Copied" : "Copy"}
                       </button>
                       <button
                         onClick={(): void => downloadLink(link)}
-                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-theme-primary border border-white/30 transition-all"
+                        className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30 text-theme-primary border border-white/30 transition-all"
                         title="Download"
                       >
                         Download
@@ -299,7 +299,7 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                           onClick={(): void => {
                             void copyToClipboard(u, `dbg-${i}`);
                           }}
-                          className="px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-theme-primary border border-white/30 transition-all"
+                          className="px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 text-theme-primary border border-white/30 transition-all"
                         >
                           {copiedKey === `dbg-${i}` ? "Copied" : "Copy"}
                         </button>
@@ -338,7 +338,7 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
                           onClick={(): void => {
                             void copyToClipboard(u, `dbg-${i}`);
                           }}
-                          className="px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 backdrop-blur-sm text-theme-primary border border-white/30 transition-all"
+                          className="px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 text-theme-primary border border-white/30 transition-all"
                         >
                           {copiedKey === `dbg-${i}` ? "Copied" : "Copy"}
                         </button>
