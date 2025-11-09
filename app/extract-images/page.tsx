@@ -26,6 +26,16 @@ export default function ExtractImagesPage(): JSX.Element {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  // Build a same-origin proxy URL for remote images to bypass CORS/hotlink blocks
+  const toProxyUrl = useCallback((imageUrl: string): string => {
+    try {
+      if (!imageUrl || typeof imageUrl !== "string") return imageUrl;
+      return `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+    } catch {
+      return imageUrl;
+    }
+  }, []);
+
   const extractImages = useCallback(async (): Promise<void> => {
     if (!urls.trim()) {
       toast.error("Please enter at least one URL");
@@ -181,16 +191,8 @@ export default function ExtractImagesPage(): JSX.Element {
               continue;
             }
 
-            const imgResponse = await fetch(imageUrl, {
-              headers: {
-                "Origin": "https://www.xiaohongshu.com",
-                "Referer": "https://www.xiaohongshu.com/",
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
-                "sec-ch-ua": '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"',
-                "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-platform": '"macOS"',
-              },
-            });
+            // Fetch via our proxy endpoint (same-origin, no CORS)
+            const imgResponse = await fetch(toProxyUrl(imageUrl));
 
             if (imgResponse.ok) {
               // Check Content-Type to ensure it's actually an image
@@ -436,12 +438,12 @@ https://xhslink.com/..."
                               key={imgIndex} 
                               className="relative group cursor-pointer aspect-[3/4]"
                               onClick={(): void => {
-                                window.open(imageUrl, "_blank", "noopener,noreferrer");
+                                window.open(toProxyUrl(imageUrl), "_blank", "noopener,noreferrer");
                               }}
                               title="Click to open image in new tab"
                             >
                               <img
-                                src={imageUrl}
+                                src={toProxyUrl(imageUrl)}
                                 alt={`Image ${imgIndex + 1} from post ${postIndex + 1}`}
                                 className="w-full h-full object-cover rounded border hover:opacity-80 transition-opacity"
                                 loading="lazy"
