@@ -444,7 +444,7 @@ export default function PostPage(): JSX.Element {
   }, [mediaFiles, selectedDestinations, isUnlocked, title, description, scheduleDate, scheduleTime, uploadFilesAndGetUrls]);
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto min-h-screen">
+    <div className="flex flex-col gap-6 p-6 max-w-5xl min-h-screen">
       <h1 className="text-2xl font-semibold text-theme-primary drop-shadow-lg">Post for me Tool</h1>
 
       {/* Password Protection */}
