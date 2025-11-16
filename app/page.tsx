@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import XHSdownload, { type XHSDownloadResult } from "./components/XHSdownload";
 import XHSdownloadCaptured from "./components/XHSdownloadCaptured";
 import XHSdownloadDirect from "./components/XHSdownloadDirect";
+import ProgressBar from "./components/ProgressBar";
 
 type Platform = "instagram" | "x";
 
@@ -38,6 +39,7 @@ export default function Page() {
   const [startTime, setStartTime] = useState<string>("09:00");
   const [videosPerDay, setVideosPerDay] = useState<number>(1);
   const [scheduling, setScheduling] = useState<boolean>(false);
+  const [progress, setProgress] = useState<number>(0);
   // Individual captions for each video (indexed by video index)
   const [individualCaptions, setIndividualCaptions] = useState<Map<number, string>>(new Map());
 
@@ -138,6 +140,17 @@ export default function Page() {
     }
   }, [caption, mediaUrls, selected, title]);
 
+  // Calculate end date based on start date, videos per day, and total videos
+  const calculateEndDate = useCallback((start: string, videosPerDay: number, totalVideos: number): string => {
+    if (!start || totalVideos === 0) return start;
+    const [year, month, day] = start.split("-").map(Number);
+    const startDate = new Date(Date.UTC(year, month - 1, day));
+    const totalDays = Math.ceil(totalVideos / videosPerDay);
+    const endDate = new Date(startDate);
+    endDate.setUTCDate(endDate.getUTCDate() + totalDays - 1);
+    return endDate.toISOString().split("T")[0];
+  }, []);
+
   const bulkSchedule = useCallback(async (): Promise<void> => {
     if (mediaUrls.length === 0) {
       toast.error("No media to schedule");
@@ -157,7 +170,17 @@ export default function Page() {
     }
     
     setScheduling(true);
+    setProgress(0);
     const tId = toast.loading(`Scheduling ${mediaUrls.length} videos via Post-Bridge…`);
+    
+    // Simulate progress updates
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 90) return prev; // Don't go to 100% until API call completes
+        return prev + 5;
+      });
+    }, 200);
+    
     try {
       // Build array of captions, one per video
       const captionsArray: string[] = mediaUrls.map((_, i) => {
@@ -179,6 +202,9 @@ export default function Page() {
           videosPerDay,
         }),
       });
+      
+      setProgress(95);
+      
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || "Bulk schedule failed");
@@ -186,16 +212,34 @@ export default function Page() {
       const result = await res.json();
       const successCount = result.scheduled || 0;
       const totalCount = result.total || mediaUrls.length;
+      
+      setProgress(100);
+      
+      // Calculate end date for success message
+      const endDate = calculateEndDate(startDate, videosPerDay, successCount);
+      const startDateFormatted = new Date(startDate).toLocaleDateString("en-US", { 
+        year: "numeric", 
+        month: "short", 
+        day: "numeric" 
+      });
+      const endDateFormatted = new Date(endDate).toLocaleDateString("en-US", { 
+        year: "numeric", 
+        month: "short", 
+        day: "numeric" 
+      });
+      
       toast.success(
-        `Successfully scheduled ${successCount}/${totalCount} videos`,
-        { id: tId }
+        `Successfully scheduled ${successCount} post${successCount !== 1 ? "s" : ""} from ${startDateFormatted} to ${endDateFormatted}`,
+        { id: tId, duration: 5000 }
       );
     } catch (e: any) {
       toast.error(e?.message || "Bulk schedule failed", { id: tId });
     } finally {
+      clearInterval(progressInterval);
       setScheduling(false);
+      setTimeout(() => setProgress(0), 500); // Reset progress after a short delay
     }
-  }, [mediaUrls, selected, bulkCaption, caption, title, startDate, startTime, videosPerDay, individualCaptions]);
+  }, [mediaUrls, selected, bulkCaption, caption, title, startDate, startTime, videosPerDay, individualCaptions, calculateEndDate]);
 
   // Calculate schedule preview
   const schedulePreview: Array<{ date: string; time: string; caption: string; mediaUrl: string; index: number }> = useMemo(() => {
@@ -437,11 +481,19 @@ export default function Page() {
                   </p>
                 </div>
 
-                <div className="mt-4">
+                <div className="mt-4 space-y-3">
+                  {scheduling && (
+                    <ProgressBar
+                      progress={progress}
+                      label="Scheduling..."
+                      showPercentage={true}
+                      barColor="bg-green-500"
+                    />
+                  )}
                   <button
                     onClick={(): void => void bulkSchedule()}
                     disabled={scheduling || mediaUrls.length === 0}
-                    className="px-5 py-3 rounded-lg bg-green-500/80 hover:bg-green-500 text-theme-primary border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
+                    className="w-full px-5 py-3 rounded-lg bg-green-500/80 hover:bg-green-500 text-theme-primary border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
                   >
                     {scheduling
                       ? `Scheduling ${mediaUrls.length} videos…`
