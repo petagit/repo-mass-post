@@ -1,0 +1,25 @@
+{
+  "topImages": ["https://via.placeholder.com/1080x1920?text=Top1"],
+  "bottomImages": ["https://via.placeholder.com/1080x1920?text=Bottom1"],
+  "compare": {"orientation": "vertical", "showDivider": true},
+  "overlay": {
+    "markdown": "# Test\nThis is a test.",
+    "fontFamily": "system-ui",
+    "fontSizePx": 48,
+    "color": "#ffffff",
+    "background": "#00000080",
+    "maxWidthPct": 80,
+    "align": "center",
+    "borderColor": "#000000",
+    "borderWidthPx": 0,
+    "borderStyle": "none",
+    "borderRadiusPx": 32
+  },
+  "animation": {
+    "durationMs": 5000,
+    "frameRate": 30,
+    "easing": "easeInOut",
+    "direction": "forward"
+  },
+  "audio": null
+}
