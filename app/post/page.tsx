@@ -32,7 +32,7 @@ export default function PostPage(): JSX.Element {
   const [password, setPassword] = useState<string>("");
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
-  
+
   // Scheduling state
   const [useSchedule, setUseSchedule] = useState<boolean>(false);
   const [scheduleDate, setScheduleDate] = useState<string>(() => {
@@ -66,14 +66,14 @@ export default function PostPage(): JSX.Element {
         ...(data.platforms.pinterest || []),
       ];
       setDestinations(list);
-      
+
       // Auto-select Instagram account "aurawell.official" and Pinterest account
       const selectedIds: string[] = [];
-      
+
       // Try to find Instagram account - check multiple variations
       const instagramHandles = data.platforms.instagram.map((d) => d.handle.toLowerCase());
       console.log("Available Instagram handles:", instagramHandles);
-      
+
       const aurawellAccount = data.platforms.instagram.find(
         (d) => {
           const handle = d.handle.toLowerCase();
@@ -84,12 +84,12 @@ export default function PostPage(): JSX.Element {
         selectedIds.push(aurawellAccount.id);
         console.log("Found Instagram account:", aurawellAccount.handle);
       }
-      
+
       // Try to find Pinterest account - check multiple variations
       const pinterestAccounts = data.platforms.pinterest || [];
       const pinterestHandles = pinterestAccounts.map((d) => d.handle.toLowerCase());
       console.log("Available Pinterest handles:", pinterestHandles);
-      
+
       // Try multiple possible Pinterest handle variations
       const pinterestAccount = pinterestAccounts.find(
         (d) => {
@@ -107,7 +107,7 @@ export default function PostPage(): JSX.Element {
         selectedIds.push(pinterestAccount.id);
         console.log("Found Pinterest account:", pinterestAccount.handle);
       }
-      
+
       if (selectedIds.length > 0) {
         setSelectedDestinations(selectedIds);
         const accountNames = selectedIds
@@ -159,7 +159,7 @@ export default function PostPage(): JSX.Element {
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const files = Array.from(e.dataTransfer.files);
     const validFiles = files.filter((file) => {
       const isImage = file.type.startsWith("image/");
@@ -295,7 +295,7 @@ export default function PostPage(): JSX.Element {
     try {
       // Upload files and get URLs
       const { urls: fileUrls, ids: fileIds } = await uploadFilesAndGetUrls(mediaFiles.map((mf) => mf.file));
-      
+
       const res = await fetch("/api/post-bridge/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -315,7 +315,7 @@ export default function PostPage(): JSX.Element {
 
       const result = await res.json();
       toast.success("Post published successfully!", { id: tId });
-      
+
       // Reset form
       setTitle("");
       setDescription("");
@@ -352,14 +352,14 @@ export default function PostPage(): JSX.Element {
     try {
       // Upload files to Post Bridge and get media URLs
       const { urls: fileUrls, ids: fileIds } = await uploadFilesAndGetUrls(mediaFiles.map((mf) => mf.file));
-      
+
       // Build array of captions, one per file (same caption for all files)
       // Only send captions array if we have different captions per file
       // Otherwise, just send the single caption to reduce payload size
       const mediaCount = fileUrls.length > 0 ? fileUrls.length : (fileIds.length || 0);
       const captionsArray: string[] = Array.from({ length: mediaCount }, () => description);
       const allCaptionsSame = captionsArray.every((c) => c === description);
-      
+
       // For scheduling, we'll use the bulk-schedule endpoint
       const requestBody: {
         mediaUrls: string[];
@@ -379,7 +379,7 @@ export default function PostPage(): JSX.Element {
         startTime: scheduleTime,
         videosPerDay: 1,
       };
-      
+
       // Only include caption/captions if they have content
       if (description.trim()) {
         if (allCaptionsSame) {
@@ -390,11 +390,11 @@ export default function PostPage(): JSX.Element {
           requestBody.captions = captionsArray;
         }
       }
-      
+
       if (title.trim()) {
         requestBody.title = title;
       }
-      
+
       const res = await fetch("/api/post-bridge/bulk-schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -416,7 +416,7 @@ export default function PostPage(): JSX.Element {
       const result = await res.json();
       const successCount = result.scheduled || 0;
       const totalCount = result.total || fileUrls.length;
-      
+
       if (result.errors && result.errors.length > 0) {
         console.error("Scheduling errors:", result.errors);
         toast.error(
@@ -429,7 +429,7 @@ export default function PostPage(): JSX.Element {
           { id: tId }
         );
       }
-      
+
       // Reset form
       setTitle("");
       setDescription("");
@@ -514,10 +514,7 @@ export default function PostPage(): JSX.Element {
               <div className="flex flex-wrap gap-2">
                 {destinations
                   .filter((d) => d.platform === "instagram")
-                  .filter((d) => {
-                    const handle = d.handle.toLowerCase();
-                    return handle !== "costights" && handle !== "petazfeng" && handle !== "cosplay_tights";
-                  })
+                  .filter((d) => d.handle.toLowerCase() === "aurawell.official")
                   .map((d) => (
                     <button
                       key={d.id}
@@ -528,11 +525,10 @@ export default function PostPage(): JSX.Element {
                             : [...prev, d.id]
                         );
                       }}
-                      className={`px-3 py-2 rounded-full border-2 text-sm transition-all ${
-                        selectedDestinations.includes(d.id)
+                      className={`px-3 py-2 rounded-full border-2 text-sm transition-all ${selectedDestinations.includes(d.id)
                           ? "bg-blue-500/60 text-theme-primary border-blue-400 shadow-lg shadow-blue-500/50 ring-2 ring-blue-400/50"
                           : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
-                      }`}
+                        }`}
                     >
                       {d.handle}
                     </button>
@@ -545,6 +541,7 @@ export default function PostPage(): JSX.Element {
                 <div className="flex flex-wrap gap-2">
                   {destinations
                     .filter((d) => d.platform === "pinterest")
+                    .filter((d) => d.handle.toLowerCase() === "infoauraspring" || d.handle.toLowerCase() === "infoaurawell")
                     .map((d) => (
                       <button
                         key={d.id}
@@ -555,11 +552,10 @@ export default function PostPage(): JSX.Element {
                               : [...prev, d.id]
                           );
                         }}
-                        className={`px-3 py-2 rounded-full border text-sm transition-all ${
-                          selectedDestinations.includes(d.id)
-                            ? "bg-white/40 text-theme-primary border-white/50 shadow-lg"
+                        className={`px-3 py-2 rounded-full border-2 text-sm transition-all ${selectedDestinations.includes(d.id)
+                            ? "bg-blue-500/60 text-theme-primary border-blue-400 shadow-lg shadow-blue-500/50 ring-2 ring-blue-400/50"
                             : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
-                        }`}
+                          }`}
                       >
                         {d.handle}
                       </button>
@@ -581,11 +577,10 @@ export default function PostPage(): JSX.Element {
             setIsDragging(true);
           }}
           onDragLeave={(): void => setIsDragging(false)}
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
-            isDragging
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${isDragging
               ? "border-blue-400/70 bg-blue-500/20"
               : "border-white/30 hover:border-white/50 bg-white/5"
-          }`}
+            }`}
         >
           <input
             type="file"
@@ -722,8 +717,8 @@ export default function PostPage(): JSX.Element {
             {scheduling
               ? "Scheduling..."
               : !isUnlocked
-              ? "🔒 Enter password to unlock"
-              : `Schedule Post${mediaFiles.length > 0 ? ` (${mediaFiles.length} file${mediaFiles.length !== 1 ? "s" : ""})` : ""}`}
+                ? "🔒 Enter password to unlock"
+                : `Schedule Post${mediaFiles.length > 0 ? ` (${mediaFiles.length} file${mediaFiles.length !== 1 ? "s" : ""})` : ""}`}
           </button>
         ) : (
           <button
@@ -734,8 +729,8 @@ export default function PostPage(): JSX.Element {
             {publishing
               ? "Publishing..."
               : !isUnlocked
-              ? "🔒 Enter password to unlock"
-              : `Post Now${mediaFiles.length > 0 ? ` (${mediaFiles.length} file${mediaFiles.length !== 1 ? "s" : ""})` : ""}`}
+                ? "🔒 Enter password to unlock"
+                : `Post Now${mediaFiles.length > 0 ? ` (${mediaFiles.length} file${mediaFiles.length !== 1 ? "s" : ""})` : ""}`}
           </button>
         )}
       </section>
