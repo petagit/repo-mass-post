@@ -32,7 +32,7 @@ export async function POST(req: Request): Promise<NextResponse> {
           "video/quicktime",
         ];
         let normalizedMimeType = file.type.toLowerCase();
-        
+
         // If MIME type is not detected, try to infer from file extension
         if (!normalizedMimeType || normalizedMimeType === "application/octet-stream") {
           const fileName = file.name.toLowerCase();
@@ -52,7 +52,7 @@ export async function POST(req: Request): Promise<NextResponse> {
             throw new Error(`Could not determine file type for ${file.name}. Supported types: ${allowedMimeTypes.join(", ")}`);
           }
         }
-        
+
         // Map common MIME types to Post Bridge accepted types
         let mimeType: string = normalizedMimeType;
         if (normalizedMimeType === "image/jpg") {
@@ -67,16 +67,16 @@ export async function POST(req: Request): Promise<NextResponse> {
             throw new Error(`Unsupported file type: ${file.type}. Supported types: ${allowedMimeTypes.join(", ")}`);
           }
         }
-        
+
         if (!allowedMimeTypes.includes(mimeType)) {
           throw new Error(`Unsupported file type: ${file.type || "unknown"}. Supported types: ${allowedMimeTypes.join(", ")}`);
         }
-        
+
         // Validate file size
         if (!file.size || file.size < 1) {
           throw new Error(`Invalid file size: ${file.size}`);
         }
-        
+
         // Step 1: Create upload URL from Post Bridge
         // API Reference: https://api.post-bridge.com/reference#tag/media/post/v1/media/create-upload-url
         // Post Bridge API expects: name (string), mime_type (string), size_bytes (integer)
@@ -90,6 +90,8 @@ export async function POST(req: Request): Promise<NextResponse> {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "PostBridge/1.0.0 (+https://api.post-bridge.com)",
             Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify(requestPayload),
@@ -104,7 +106,7 @@ export async function POST(req: Request): Promise<NextResponse> {
           } catch {
             // Keep original error text
           }
-          
+
           console.error("Failed to create upload URL:", {
             file: file.name,
             size: file.size,
@@ -113,7 +115,7 @@ export async function POST(req: Request): Promise<NextResponse> {
             status: createUploadUrlRes.status,
             error: errorMessage,
           });
-          
+
           throw new Error(`Failed to generate signed URL for file "${file.name}": ${errorMessage}`);
         }
 
@@ -170,17 +172,19 @@ export async function POST(req: Request): Promise<NextResponse> {
         let mediaUrl: string | undefined;
         const maxRetries = 3;
         const retryDelay = 1000; // 1 second
-        
+
         for (let attempt = 0; attempt < maxRetries; attempt++) {
           try {
             if (attempt > 0) {
               // Wait before retrying
               await new Promise((resolve) => setTimeout(resolve, retryDelay * attempt));
             }
-            
+
             const mediaRes = await fetch(`${baseUrl}/v1/media/${mediaId}`, {
               headers: {
                 Authorization: `Bearer ${apiKey}`,
+                "Accept": "application/json",
+                "User-Agent": "PostBridge/1.0.0 (+https://api.post-bridge.com)",
               },
               cache: "no-store",
             });
@@ -195,7 +199,7 @@ export async function POST(req: Request): Promise<NextResponse> {
               }
               continue; // Retry
             }
-            
+
             const mediaDetails = (await mediaRes.json()) as {
               url?: string;
               media_url?: string;
@@ -205,7 +209,7 @@ export async function POST(req: Request): Promise<NextResponse> {
               status?: string;
               state?: string;
             };
-            
+
             mediaUrl =
               mediaDetails.url ||
               mediaDetails.media_url ||
@@ -213,16 +217,16 @@ export async function POST(req: Request): Promise<NextResponse> {
               mediaDetails.public_url ||
               mediaDetails.publicUrl ||
               undefined;
-            
+
             // If we got a URL, we're done
             if (mediaUrl) break;
-            
+
             // If media is still processing, retry
             const status = (mediaDetails.status || mediaDetails.state || "").toLowerCase();
             if (status === "processing" || status === "pending" || status === "uploading") {
               continue; // Retry
             }
-            
+
             // If status indicates it's ready but no URL, break (may be an API issue)
             break;
           } catch (fetchError: any) {

@@ -123,7 +123,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       // Check if all media IDs are ready
       const mediaReadinessChecks = await Promise.all(inputIds.map(verifyMediaReady));
       const allReady = mediaReadinessChecks.every((check) => check.ready);
-      
+
       // If not all media is ready and we don't have URLs, try to fetch URLs from media details
       if (!allReady && !hasUrls) {
         const fetchedUrls: string[] = [];
@@ -148,7 +148,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     let platform_configurations: any | undefined;
-    let payloadMedia: { kind: "urls" | "ids"; urls?: string[]; ids?: (string|number)[] };
+    let payloadMedia: { kind: "urls" | "ids"; urls?: string[]; ids?: (string | number)[] };
 
     if (useMediaIds && hasIds) {
       // Use media IDs when available and ready
@@ -177,12 +177,12 @@ export async function POST(req: Request): Promise<NextResponse> {
     // Reference: https://api.post-bridge.com/reference#tag/posts/post/v1/posts
     // According to working sample: use 'media' array for UUID media IDs, 'media_urls' for URLs
     const payload: Record<string, any> = {};
-    
+
     // Check if media IDs are UUIDs (from uploads) or regular URLs
     const isMediaId = (id: string): boolean => {
       return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     };
-    
+
     if (payloadMedia.kind === "urls") {
       payload.media_urls = payloadMedia.urls;
       console.log(`Using media_urls (${payloadMedia.urls?.length || 0} URLs)`);
@@ -251,6 +251,8 @@ export async function POST(req: Request): Promise<NextResponse> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "PostBridge/1.0.0 (+https://api.post-bridge.com)",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(payload),
@@ -282,7 +284,7 @@ export async function POST(req: Request): Promise<NextResponse> {
           social_accounts: payload.social_accounts,
         },
       });
-      
+
       // If using media/media_ids failed, suggest trying with URLs if available
       if (((payload as any).media || (payload as any).media_ids) && hasUrls) {
         console.warn("Publish failed with media/media_ids. Consider using media_urls instead.");

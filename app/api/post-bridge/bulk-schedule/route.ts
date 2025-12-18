@@ -49,7 +49,11 @@ export async function POST(req: Request): Promise<NextResponse> {
       for (const p of tryDestPaths) {
         try {
           const r = await fetch(`${baseUrl}${p}`, {
-            headers: { Authorization: `Bearer ${apiKey}` },
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Accept": "application/json",
+              "User-Agent": "PostBridge/1.0.0 (+https://api.post-bridge.com)",
+            },
             cache: "no-store",
           });
           if (!r.ok) continue;
@@ -114,16 +118,16 @@ export async function POST(req: Request): Promise<NextResponse> {
     for (let batchIndex = 0; batchIndex < batches; batchIndex++) {
       const startIndex = batchIndex * BATCH_SIZE;
       const endIndex = Math.min(startIndex + BATCH_SIZE, sourceList.length);
-      
+
       // Process files in this batch
       for (let i = startIndex; i < endIndex; i++) {
         const dayIndex = Math.floor(i / body.videosPerDay);
         const videoIndexInDay = i % body.videosPerDay;
-        
+
         // Calculate scheduled time: start time + (day offset) + (time offset within day)
         const scheduledDate = new Date(startDateTime);
         scheduledDate.setUTCDate(scheduledDate.getUTCDate() + dayIndex);
-        
+
         // Distribute videos throughout the day (evenly spaced)
         // Calculate time interval: if videosPerDay is 3, space them every 8 hours (24/3)
         // Example: start at 9:00, videos at 9:00, 17:00, 01:00 (next day)
@@ -131,16 +135,16 @@ export async function POST(req: Request): Promise<NextResponse> {
         const hoursPerDay = 24;
         const timeIntervalHours = hoursPerDay / body.videosPerDay;
         const scheduledHours = hours + (videoIndexInDay * timeIntervalHours);
-        
+
         // If scheduled hours exceed 24, wrap to next day but keep within reasonable bounds
         let scheduledHour = Math.floor(scheduledHours) % 24;
         const scheduledMinute = Math.floor((scheduledHours % 1) * 60);
-        
+
         // If we wrapped past midnight, we're on the next day
         if (scheduledHours >= 24) {
           scheduledDate.setUTCDate(scheduledDate.getUTCDate() + 1);
         }
-        
+
         scheduledDate.setUTCHours(scheduledHour, scheduledMinute, 0, 0);
 
         const scheduledAt = scheduledDate.toISOString();
@@ -149,25 +153,25 @@ export async function POST(req: Request): Promise<NextResponse> {
         const mediaItem = sourceList[i];
         const isVideo = /\.(mp4|mov|m3u8|mpd)(\?|$)/i.test(mediaItem);
         const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(mediaItem);
-        
+
         // Check if mediaItem is a UUID (from uploads) - matching working sample pattern
         const isMediaId = (id: string): boolean => {
           return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
         };
-        
+
         // Use individual caption if available, otherwise fall back to bulk caption
-        const videoCaption = (body.captions && body.captions[i] !== undefined) 
-          ? body.captions[i] 
+        const videoCaption = (body.captions && body.captions[i] !== undefined)
+          ? body.captions[i]
           : (body.caption ?? "");
-        
+
         // Build platform-specific configuration (only when we can detect media type)
         const platform_configurations: any = isVideo ? { instagram: { placement: "reel" } } : undefined;
 
         // Limit caption length to prevent request entity too large errors
         // Most platforms have limits (e.g., Instagram ~2200 chars, Twitter ~280 chars)
         const maxCaptionLength = 2200;
-        const truncatedCaption = videoCaption.length > maxCaptionLength 
-          ? videoCaption.substring(0, maxCaptionLength) 
+        const truncatedCaption = videoCaption.length > maxCaptionLength
+          ? videoCaption.substring(0, maxCaptionLength)
           : videoCaption;
 
         // Build payload according to Post Bridge API specification
@@ -224,6 +228,8 @@ export async function POST(req: Request): Promise<NextResponse> {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "Accept": "application/json",
+              "User-Agent": "PostBridge/1.0.0 (+https://api.post-bridge.com)",
               Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify(payload),
@@ -231,7 +237,7 @@ export async function POST(req: Request): Promise<NextResponse> {
           const text = await res.text();
           let json: any;
           try { json = JSON.parse(text); } catch { /* keep text */ }
-          
+
           if (!res.ok) {
             console.error(`Post-Bridge API error for media ${i}:`, {
               status: res.status,
@@ -241,13 +247,13 @@ export async function POST(req: Request): Promise<NextResponse> {
                 ...payload,
                 media: Array.isArray((payload as any).media) ? (payload as any).media : undefined,
                 media_urls: Array.isArray(payload.media_urls)
-                  ? payload.media_urls.map((u: string) => `${u.substring(0,50)}...`)
+                  ? payload.media_urls.map((u: string) => `${u.substring(0, 50)}...`)
                   : undefined,
                 media_ids: Array.isArray((payload as any).media_ids) ? (payload as any).media_ids : undefined,
               }, // Truncate for logging
             });
           }
-          
+
           results.push({
             mediaUrl: mediaItem,
             scheduledAt,
@@ -265,7 +271,7 @@ export async function POST(req: Request): Promise<NextResponse> {
           });
         }
       }
-      
+
       // Add a small delay between batches to avoid rate limiting
       if (batchIndex < batches - 1) {
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -274,7 +280,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     const successCount = results.filter((r) => r.success).length;
     const errors = results.filter((r) => !r.success).map((r) => r.error || r.response?.error || "Unknown error");
-    
+
     return NextResponse.json({
       success: successCount > 0,
       total: results.length,

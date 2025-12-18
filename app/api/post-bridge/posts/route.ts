@@ -40,9 +40,13 @@ export async function GET(req: Request): Promise<NextResponse> {
       queryParams.append("limit", "50");
 
       const url = `${baseUrl}${path}${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
-      
+
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Accept": "application/json",
+          "User-Agent": "PostBridge/1.0.0 (+https://api.post-bridge.com)",
+        },
         cache: "no-store",
       });
 
@@ -74,7 +78,11 @@ export async function GET(req: Request): Promise<NextResponse> {
 
         const url = `${baseUrl}${path}${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
         const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${apiKey}` },
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Accept": "application/json",
+            "User-Agent": "PostBridge/1.0.0 (+https://api.post-bridge.com)",
+          },
           cache: "no-store",
         });
 

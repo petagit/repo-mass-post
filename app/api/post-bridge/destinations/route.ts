@@ -38,7 +38,11 @@ export async function GET(): Promise<NextResponse> {
     let lastErrorText = "";
     for (const p of tryPaths) {
       const res = await fetch(`${baseUrl}${p}`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Accept": "application/json",
+          "User-Agent": "PostBridge/1.0.0 (+https://api.post-bridge.com)",
+        },
         cache: "no-store",
       });
       if (!res.ok) {
