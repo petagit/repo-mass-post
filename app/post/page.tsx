@@ -514,7 +514,6 @@ export default function PostPage(): JSX.Element {
               <div className="flex flex-wrap gap-2">
                 {destinations
                   .filter((d) => d.platform === "instagram")
-                  .filter((d) => d.handle.toLowerCase() === "aurawell.official")
                   .map((d) => (
                     <button
                       key={d.id}
@@ -526,8 +525,8 @@ export default function PostPage(): JSX.Element {
                         );
                       }}
                       className={`px-3 py-2 rounded-full border-2 text-sm transition-all ${selectedDestinations.includes(d.id)
-                          ? "bg-blue-500/60 text-theme-primary border-blue-400 shadow-lg shadow-blue-500/50 ring-2 ring-blue-400/50"
-                          : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                        ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                        : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
                         }`}
                     >
                       {d.handle}
@@ -535,13 +534,12 @@ export default function PostPage(): JSX.Element {
                   ))}
               </div>
             </div>
-            {destinations.some((d) => d.platform === "pinterest") && (
+            {destinations.some((d) => d.platform === "x") && (
               <div>
-                <h3 className="text-xs font-medium text-theme-primary/90 mb-2">Pinterest</h3>
+                <h3 className="text-xs font-medium text-theme-primary/90 mb-2">X (Twitter)</h3>
                 <div className="flex flex-wrap gap-2">
                   {destinations
-                    .filter((d) => d.platform === "pinterest")
-                    .filter((d) => d.handle.toLowerCase() === "infoauraspring" || d.handle.toLowerCase() === "infoaurawell")
+                    .filter((d) => d.platform === "x")
                     .map((d) => (
                       <button
                         key={d.id}
@@ -553,8 +551,35 @@ export default function PostPage(): JSX.Element {
                           );
                         }}
                         className={`px-3 py-2 rounded-full border-2 text-sm transition-all ${selectedDestinations.includes(d.id)
-                            ? "bg-blue-500/60 text-theme-primary border-blue-400 shadow-lg shadow-blue-500/50 ring-2 ring-blue-400/50"
-                            : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                          : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          }`}
+                      >
+                        {d.handle}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+            {destinations.some((d) => d.platform === "pinterest") && (
+              <div>
+                <h3 className="text-xs font-medium text-theme-primary/90 mb-2">Pinterest</h3>
+                <div className="flex flex-wrap gap-2">
+                  {destinations
+                    .filter((d) => d.platform === "pinterest")
+                    .map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={(): void => {
+                          setSelectedDestinations((prev) =>
+                            prev.includes(d.id)
+                              ? prev.filter((id) => id !== d.id)
+                              : [...prev, d.id]
+                          );
+                        }}
+                        className={`px-3 py-2 rounded-full border-2 text-sm transition-all ${selectedDestinations.includes(d.id)
+                          ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                          : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
                           }`}
                       >
                         {d.handle}
@@ -578,8 +603,8 @@ export default function PostPage(): JSX.Element {
           }}
           onDragLeave={(): void => setIsDragging(false)}
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${isDragging
-              ? "border-blue-400/70 bg-blue-500/20"
-              : "border-white/30 hover:border-white/50 bg-white/5"
+            ? "border-blue-400/70 bg-blue-500/20"
+            : "border-white/30 hover:border-white/50 bg-white/5"
             }`}
         >
           <input
@@ -724,7 +749,7 @@ export default function PostPage(): JSX.Element {
           <button
             onClick={(): void => void publish()}
             disabled={!isUnlocked || publishing || mediaFiles.length === 0}
-            className="w-full px-5 py-3 rounded-lg bg-blue-500/80 hover:bg-blue-500 text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-medium shadow-lg transition-all"
+            className="w-full px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-semibold shadow-xl shadow-blue-600/20 transition-all uppercase tracking-wide"
           >
             {publishing
               ? "Publishing..."
