@@ -8,7 +8,7 @@ import XHSdownloadCaptured from "./components/XHSdownloadCaptured";
 import XHSdownloadDirect from "./components/XHSdownloadDirect";
 import ProgressBar from "./components/ProgressBar";
 
-type Platform = "instagram" | "x";
+type Platform = "instagram" | "x" | "pinterest";
 
 export interface Destination {
   id: string;
@@ -27,7 +27,7 @@ export default function Page() {
   const [loadingDest, setLoadingDest] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
   const [destError, setDestError] = useState<string>("");
-  
+
   // Bulk schedule settings (default to true)
   const [useBulkSchedule, setUseBulkSchedule] = useState<boolean>(true);
   const [bulkCaption, setBulkCaption] = useState<string>("#etamecosplay #cosplay #cos");
@@ -61,12 +61,11 @@ export default function Page() {
         toast.error("Failed to load destinations", { id });
         return;
       }
-      const data = (await res.json()) as {
-        platforms: { instagram: Destination[]; x: Destination[] };
-        defaults: string[];
-        error?: string;
-      };
-      const list = [...data.platforms.instagram, ...data.platforms.x];
+      const list = [
+        ...data.platforms.instagram,
+        ...data.platforms.x,
+        ...(data.platforms.pinterest || [])
+      ];
       setDestinations(list);
       // Choose sane defaults from actual, owned destinations only (no pseudo tokens)
       const igList = data.platforms.instagram;
@@ -168,11 +167,11 @@ export default function Page() {
       toast.error("Videos per day must be between 1 and 24");
       return;
     }
-    
+
     setScheduling(true);
     setProgress(0);
     const tId = toast.loading(`Scheduling ${mediaUrls.length} videos via Post-Bridge…`);
-    
+
     // Simulate progress updates
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -180,14 +179,14 @@ export default function Page() {
         return prev + 5;
       });
     }, 200);
-    
+
     try {
       // Build array of captions, one per video
       const captionsArray: string[] = mediaUrls.map((_, i) => {
         const individualCaption = individualCaptions.get(i);
         return individualCaption !== undefined ? individualCaption : (bulkCaption || caption);
       });
-      
+
       const res = await fetch("/api/post-bridge/bulk-schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -202,9 +201,9 @@ export default function Page() {
           videosPerDay,
         }),
       });
-      
+
       setProgress(95);
-      
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || "Bulk schedule failed");
@@ -212,22 +211,22 @@ export default function Page() {
       const result = await res.json();
       const successCount = result.scheduled || 0;
       const totalCount = result.total || mediaUrls.length;
-      
+
       setProgress(100);
-      
+
       // Calculate end date for success message
       const endDate = calculateEndDate(startDate, videosPerDay, successCount);
-      const startDateFormatted = new Date(startDate).toLocaleDateString("en-US", { 
-        year: "numeric", 
-        month: "short", 
-        day: "numeric" 
+      const startDateFormatted = new Date(startDate).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
       });
-      const endDateFormatted = new Date(endDate).toLocaleDateString("en-US", { 
-        year: "numeric", 
-        month: "short", 
-        day: "numeric" 
+      const endDateFormatted = new Date(endDate).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
       });
-      
+
       toast.success(
         `Successfully scheduled ${successCount} post${successCount !== 1 ? "s" : ""} from ${startDateFormatted} to ${endDateFormatted}`,
         { id: tId, duration: 5000 }
@@ -256,26 +255,26 @@ export default function Page() {
     for (let i = 0; i < mediaUrls.length; i++) {
       const dayIndex = Math.floor(i / videosPerDay);
       const videoIndexInDay = i % videosPerDay;
-      
+
       const scheduledDate = new Date(startDateTime);
       scheduledDate.setUTCDate(scheduledDate.getUTCDate() + dayIndex);
-      
+
       const hoursPerDay = 24;
       const timeIntervalHours = hoursPerDay / videosPerDay;
       const scheduledHours = hours + (videoIndexInDay * timeIntervalHours);
-      
+
       let scheduledHour = Math.floor(scheduledHours) % 24;
       const scheduledMinute = Math.floor((scheduledHours % 1) * 60);
-      
+
       if (scheduledHours >= 24) {
         scheduledDate.setUTCDate(scheduledDate.getUTCDate() + 1);
       }
-      
+
       scheduledDate.setUTCHours(scheduledHour, scheduledMinute, 0, 0);
 
       const dateStr = scheduledDate.toISOString().split("T")[0];
       const timeStr = `${String(scheduledHour).padStart(2, "0")}:${String(scheduledMinute).padStart(2, "0")}`;
-      
+
       // Use individual caption if set, otherwise fall back to bulk caption or default caption
       const individualCaption = individualCaptions.get(i);
       preview.push({
@@ -304,243 +303,288 @@ export default function Page() {
           </Link>
         </div>
         <div className="space-y-6">
-        <section className="glass-card rounded-lg shadow-xl p-5 border-2 border-red-400/50">
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="font-medium text-theme-primary drop-shadow-md">1) Extract from Xiaohongshu (Direct Method)</h2>
-            <span className="px-2 py-1 text-xs bg-green-500/30 text-green-100 border border-green-400/50 rounded-full font-semibold">Recommended</span>
-          </div>
-          <p className="text-sm text-theme-primary/90 mb-3 drop-shadow-sm">
-            Follows shortened link and extracts video URLs directly from XHS page, then tests with curl-like headers to verify accessibility.
-          </p>
-          <XHSdownloadDirect
-            className=""
-            onComplete={(r): void => {
-              setMedia(r);
-              if (r.success) {
-                toast.success(`Extracted ${r.videoLinks.length} video(s), ${r.imageLinks.length} image(s)`);
-              } else {
-                toast.error(r.error || "Failed to extract");
-              }
-            }}
-            placeholder="Paste XHS shortened links (one per line or multiple links in text)..."
-            autoFocus={true}
-          />
-        </section>
+          <section className="glass-card rounded-lg shadow-xl p-5 border-2 border-red-400/50">
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="font-medium text-theme-primary drop-shadow-md">1) Extract from Xiaohongshu (Direct Method)</h2>
+              <span className="px-2 py-1 text-xs bg-green-500/30 text-green-100 border border-green-400/50 rounded-full font-semibold">Recommended</span>
+            </div>
+            <p className="text-sm text-theme-primary/90 mb-3 drop-shadow-sm">
+              Follows shortened link and extracts video URLs directly from XHS page, then tests with curl-like headers to verify accessibility.
+            </p>
+            <XHSdownloadDirect
+              className=""
+              onComplete={(r): void => {
+                setMedia(r);
+                if (r.success) {
+                  toast.success(`Extracted ${r.videoLinks.length} video(s), ${r.imageLinks.length} image(s)`);
+                } else {
+                  toast.error(r.error || "Failed to extract");
+                }
+              }}
+              placeholder="Paste XHS shortened links (one per line or multiple links in text)..."
+              autoFocus={true}
+            />
+          </section>
 
-        <details className="glass-card rounded-lg shadow-xl p-5">
-          <summary className="font-medium mb-3 cursor-pointer text-theme-primary/90 hover:text-theme-primary drop-shadow-sm">
-            Alternative Methods (Click to expand)
-          </summary>
-          <div className="space-y-6 mt-4">
-            <section>
-              <h3 className="font-medium mb-3 text-sm text-theme-primary/90">1a) Standard extractor (via kukutool)</h3>
-              <XHSdownload
-                className=""
-                onComplete={(r): void => {
-                  setMedia(r);
-                  if (r.success) toast.success("Extracted media");
-                  else toast.error(r.error || "Failed to extract");
-                }}
-              />
-            </section>
+          <details className="glass-card rounded-lg shadow-xl p-5">
+            <summary className="font-medium mb-3 cursor-pointer text-theme-primary/90 hover:text-theme-primary drop-shadow-sm">
+              Alternative Methods (Click to expand)
+            </summary>
+            <div className="space-y-6 mt-4">
+              <section>
+                <h3 className="font-medium mb-3 text-sm text-theme-primary/90">1a) Standard extractor (via kukutool)</h3>
+                <XHSdownload
+                  className=""
+                  onComplete={(r): void => {
+                    setMedia(r);
+                    if (r.success) toast.success("Extracted media");
+                    else toast.error(r.error || "Failed to extract");
+                  }}
+                />
+              </section>
 
-            <section>
-              <h3 className="font-medium mb-3 text-sm text-theme-primary/90">1b) Captured-only extractor (debug)</h3>
-              <p className="text-xs text-theme-primary/80 mb-3">Uses only the headers/body from <code className="bg-white/20 px-1 rounded">api_call</code> to hit kukutool directly.</p>
-              <XHSdownloadCaptured
-                className=""
-                onComplete={(r): void => {
-                  setMedia(r);
-                  if (r.success) toast.success("Extracted (captured)");
-                  else toast.error(r.error || "Failed (captured)");
-                }}
-              />
-            </section>
-          </div>
-        </details>
+              <section>
+                <h3 className="font-medium mb-3 text-sm text-theme-primary/90">1b) Captured-only extractor (debug)</h3>
+                <p className="text-xs text-theme-primary/80 mb-3">Uses only the headers/body from <code className="bg-white/20 px-1 rounded">api_call</code> to hit kukutool directly.</p>
+                <XHSdownloadCaptured
+                  className=""
+                  onComplete={(r): void => {
+                    setMedia(r);
+                    if (r.success) toast.success("Extracted (captured)");
+                    else toast.error(r.error || "Failed (captured)");
+                  }}
+                />
+              </section>
+            </div>
+          </details>
 
-        <section className="glass-card rounded-lg shadow-xl p-5">
-          <h2 className="font-medium mb-3 text-theme-primary drop-shadow-md">2) Choose destinations</h2>
-          <div className="flex flex-wrap gap-3">
-            {destinations.map((d) => (
-              <button
-                key={d.id}
-                onClick={(): void => toggle(d.id)}
-                className={`px-3 py-2 rounded-full border transition-all ${
-                  selected.includes(d.id)
-                    ? "bg-white/40 text-theme-primary border-white/50 shadow-lg"
-                    : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
-                }`}
-                disabled={loadingDest}
-                aria-pressed={selected.includes(d.id)}
-              >
-                {d.platform === "instagram" ? "IG" : "X"} · {d.handle}
-              </button>
-            ))}
-            {destinations.length === 0 && (
-              <div className="text-sm text-theme-primary/80">
-                {loadingDest ? "Loading…" : destError ? destError : "No accounts available"}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="glass-card rounded-lg shadow-xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-medium text-theme-primary drop-shadow-md">3) Schedule Settings</h2>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={!useBulkSchedule}
-                onChange={(e): void => setUseBulkSchedule(!e.target.checked)}
-                className="w-4 h-4 accent-white/50"
-              />
-              <span className="text-sm text-theme-primary/90">Immediate Post</span>
-            </label>
-          </div>
-
-          {useBulkSchedule ? (
-            <>
-              <div className="space-y-4">
+          <section className="glass-card rounded-lg shadow-xl p-5">
+            <h2 className="font-medium mb-3 text-theme-primary drop-shadow-md">2) Choose destinations</h2>
+            <div className="space-y-4">
+              {destinations.some(d => d.platform === "instagram") && (
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-theme-primary/90">Bulk Caption</label>
-                    <button
-                      onClick={(): void => {
-                        // Apply bulk caption to all videos
-                        const newCaptions = new Map<number, string>();
-                        for (let i = 0; i < mediaUrls.length; i++) {
-                          newCaptions.set(i, bulkCaption);
-                        }
-                        setIndividualCaptions(newCaptions);
-                        toast.success(`Applied caption to ${mediaUrls.length} video${mediaUrls.length !== 1 ? "s" : ""}`);
-                      }}
-                      disabled={mediaUrls.length === 0}
-                      className="px-3 py-1 text-xs rounded bg-blue-500/80 hover:bg-blue-500 text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed transition-all"
+                  <h3 className="text-xs font-medium text-theme-primary/90 mb-2">Instagram</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {destinations.filter(d => d.platform === "instagram").map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={(): void => toggle(d.id)}
+                        className={`px-3 py-2 rounded-full border-2 transition-all ${selected.includes(d.id)
+                            ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                            : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          }`}
+                        disabled={loadingDest}
+                      >
+                        {d.handle}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {destinations.some(d => d.platform === "x") && (
+                <div>
+                  <h3 className="text-xs font-medium text-theme-primary/90 mb-2">X (Twitter)</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {destinations.filter(d => d.platform === "x").map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={(): void => toggle(d.id)}
+                        className={`px-3 py-2 rounded-full border-2 transition-all ${selected.includes(d.id)
+                            ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                            : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          }`}
+                        disabled={loadingDest}
+                      >
+                        {d.handle}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {destinations.some(d => d.platform === "pinterest") && (
+                <div>
+                  <h3 className="text-xs font-medium text-theme-primary/90 mb-2">Pinterest</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {destinations.filter(d => d.platform === "pinterest").map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={(): void => toggle(d.id)}
+                        className={`px-3 py-2 rounded-full border-2 transition-all ${selected.includes(d.id)
+                            ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                            : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          }`}
+                        disabled={loadingDest}
+                      >
+                        {d.handle}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {destinations.length === 0 && (
+                <div className="text-sm text-theme-primary/80">
+                  {loadingDest ? "Loading…" : destError ? destError : "No accounts available"}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="glass-card rounded-lg shadow-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-medium text-theme-primary drop-shadow-md">3) Schedule Settings</h2>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!useBulkSchedule}
+                  onChange={(e): void => setUseBulkSchedule(!e.target.checked)}
+                  className="w-4 h-4 accent-white/50"
+                />
+                <span className="text-sm text-theme-primary/90">Immediate Post</span>
+              </label>
+            </div>
+
+            {useBulkSchedule ? (
+              <>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-theme-primary/90">Bulk Caption</label>
+                      <button
+                        onClick={(): void => {
+                          // Apply bulk caption to all videos
+                          const newCaptions = new Map<number, string>();
+                          for (let i = 0; i < mediaUrls.length; i++) {
+                            newCaptions.set(i, bulkCaption);
+                          }
+                          setIndividualCaptions(newCaptions);
+                          toast.success(`Applied caption to ${mediaUrls.length} video${mediaUrls.length !== 1 ? "s" : ""}`);
+                        }}
+                        disabled={mediaUrls.length === 0}
+                        className="px-3 py-1 text-xs rounded bg-blue-500/80 hover:bg-blue-500 text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed transition-all"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    <textarea
+                      value={bulkCaption}
+                      onChange={(e): void => setBulkCaption(e.target.value)}
+                      className="glass-input w-full min-h-24 resize-y px-3 py-2 rounded-lg text-theme-primary placeholder-theme-muted"
+                      placeholder="Enter a caption to apply to all videos..."
+                      maxLength={2200}
+                    />
+                    <div className="text-xs text-theme-primary/70 mt-1 text-right">
+                      {bulkCaption.length}/2200
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-theme-primary/90">Start Date</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e): void => setStartDate(e.target.value)}
+                        className="glass-input w-full px-3 py-2 rounded-lg text-theme-primary"
+                        min={new Date().toISOString().split("T")[0]}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-theme-primary/90">Start Time</label>
+                      <input
+                        type="time"
+                        value={startTime}
+                        onChange={(e): void => setStartTime(e.target.value)}
+                        className="glass-input w-full px-3 py-2 rounded-lg text-theme-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-theme-primary/90">
+                      Videos per day (1-24)
+                    </label>
+                    <select
+                      value={videosPerDay}
+                      onChange={(e): void => setVideosPerDay(Number(e.target.value))}
+                      className="glass-input w-full px-3 py-2 rounded-lg text-white"
                     >
-                      Apply
+                      {Array.from({ length: 24 }, (_, i) => i + 1).map((num) => (
+                        <option key={num} value={num} className="bg-gray-800">
+                          {num}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-theme-primary/70 mt-1">
+                      {mediaUrls.length > 0 && (
+                        <>
+                          {mediaUrls.length} video{mediaUrls.length !== 1 ? "s" : ""} will be scheduled over{" "}
+                          {Math.ceil(mediaUrls.length / videosPerDay)} day
+                          {Math.ceil(mediaUrls.length / videosPerDay) !== 1 ? "s" : ""}
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    {scheduling && (
+                      <ProgressBar
+                        progress={progress}
+                        label="Scheduling..."
+                        showPercentage={true}
+                        barColor="bg-green-500"
+                      />
+                    )}
+                    <button
+                      onClick={(): void => void bulkSchedule()}
+                      disabled={scheduling || mediaUrls.length === 0}
+                      className="w-full px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-semibold shadow-xl shadow-blue-600/20 transition-all uppercase tracking-wide"
+                    >
+                      {scheduling
+                        ? `Scheduling ${mediaUrls.length} videos…`
+                        : `Schedule ${mediaUrls.length} video${mediaUrls.length !== 1 ? "s" : ""} via Post-Bridge`}
                     </button>
                   </div>
-                  <textarea
-                    value={bulkCaption}
-                    onChange={(e): void => setBulkCaption(e.target.value)}
-                    className="glass-input w-full min-h-24 resize-y px-3 py-2 rounded-lg text-theme-primary placeholder-theme-muted"
-                    placeholder="Enter a caption to apply to all videos..."
-                    maxLength={2200}
-                  />
-                  <div className="text-xs text-theme-primary/70 mt-1 text-right">
-                    {bulkCaption.length}/2200
-                  </div>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-theme-primary/90">Start Date</label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e): void => setStartDate(e.target.value)}
-                      className="glass-input w-full px-3 py-2 rounded-lg text-theme-primary"
-                      min={new Date().toISOString().split("T")[0]}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-theme-primary/90">Start Time</label>
-                    <input
-                      type="time"
-                      value={startTime}
-                      onChange={(e): void => setStartTime(e.target.value)}
-                      className="glass-input w-full px-3 py-2 rounded-lg text-theme-primary"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-theme-primary/90">
-                    Videos per day (1-24)
-                  </label>
-                  <select
-                    value={videosPerDay}
-                    onChange={(e): void => setVideosPerDay(Number(e.target.value))}
-                    className="glass-input w-full px-3 py-2 rounded-lg text-white"
-                  >
-                    {Array.from({ length: 24 }, (_, i) => i + 1).map((num) => (
-                      <option key={num} value={num} className="bg-gray-800">
-                        {num}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-theme-primary/70 mt-1">
-                    {mediaUrls.length > 0 && (
-                      <>
-                        {mediaUrls.length} video{mediaUrls.length !== 1 ? "s" : ""} will be scheduled over{" "}
-                        {Math.ceil(mediaUrls.length / videosPerDay)} day
-                        {Math.ceil(mediaUrls.length / videosPerDay) !== 1 ? "s" : ""}
-                      </>
-                    )}
-                  </p>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {scheduling && (
-                    <ProgressBar
-                      progress={progress}
-                      label="Scheduling..."
-                      showPercentage={true}
-                      barColor="bg-green-500"
-                    />
-                  )}
+              </>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e): void => setTitle(e.target.value)}
+                  className="glass-input w-full mb-3 px-3 py-2 rounded-lg text-theme-primary placeholder-theme-muted"
+                  placeholder="Enter a title (optional)"
+                />
+                <textarea
+                  value={caption}
+                  onChange={(e): void => setCaption(e.target.value)}
+                  className="glass-input w-full min-h-24 resize-y px-3 py-2 rounded-lg text-white placeholder-white/60"
+                  placeholder="Write an optional caption…"
+                />
+                <div className="mt-4">
                   <button
-                    onClick={(): void => void bulkSchedule()}
-                    disabled={scheduling || mediaUrls.length === 0}
-                    className="w-full px-5 py-3 rounded-lg bg-green-500/80 hover:bg-green-500 text-theme-primary border border-green-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
+                    onClick={(): void => void publish()}
+                    disabled={publishing}
+                    className="px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white border border-blue-500 disabled:bg-gray-500/50 disabled:cursor-not-allowed font-semibold shadow-xl shadow-blue-600/20 transition-all uppercase tracking-wide"
                   >
-                    {scheduling
-                      ? `Scheduling ${mediaUrls.length} videos…`
-                      : `Schedule ${mediaUrls.length} video${mediaUrls.length !== 1 ? "s" : ""} via Post-Bridge`}
+                    {publishing ? "Posting…" : "Post via Post-Bridge"}
                   </button>
                 </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <input
-                type="text"
-                value={title}
-                onChange={(e): void => setTitle(e.target.value)}
-                className="glass-input w-full mb-3 px-3 py-2 rounded-lg text-theme-primary placeholder-theme-muted"
-                placeholder="Enter a title (optional)"
-              />
-              <textarea
-                value={caption}
-                onChange={(e): void => setCaption(e.target.value)}
-                className="glass-input w-full min-h-24 resize-y px-3 py-2 rounded-lg text-white placeholder-white/60"
-                placeholder="Write an optional caption…"
-              />
-              <div className="mt-4">
-                <button
-                  onClick={(): void => void publish()}
-                  disabled={publishing}
-                  className="px-5 py-3 rounded-lg bg-blue-500/80 hover:bg-blue-500 text-theme-primary border border-blue-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed shadow-lg transition-all"
-                >
-                  {publishing ? "Posting…" : "Post via Post-Bridge"}
-                </button>
-              </div>
-            </>
-          )}
-        </section>
-
-        {mediaUrls.length > 0 && (
-          <section className="glass-card rounded-lg shadow-xl p-5">
-            <h2 className="font-medium mb-3 text-theme-primary drop-shadow-md">Preview media URLs</h2>
-            <ul className="list-disc list-inside text-sm break-all space-y-1 text-theme-primary/90">
-              {mediaUrls.map((u, i) => (
-                <li key={i}>{u}</li>
-              ))}
-            </ul>
+              </>
+            )}
           </section>
-        )}
-      </div>
+
+          {mediaUrls.length > 0 && (
+            <section className="glass-card rounded-lg shadow-xl p-5">
+              <h2 className="font-medium mb-3 text-theme-primary drop-shadow-md">Preview media URLs</h2>
+              <ul className="list-disc list-inside text-sm break-all space-y-1 text-theme-primary/90">
+                {mediaUrls.map((u, i) => (
+                  <li key={i}>{u}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
       </main>
 
       {/* Sidebar - Schedule Preview */}

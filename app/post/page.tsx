@@ -249,6 +249,9 @@ export default function PostPage(): JSX.Element {
     });
 
     if (!res.ok) {
+      if (res.status === 403) {
+        throw new Error("Access Denied (403). Only authorized users can upload. Check Vercel Authentication or VPN settings.");
+      }
       const errorText = await res.text();
       let errorMessage = errorText || "Upload failed";
       try {
