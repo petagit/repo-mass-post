@@ -77,7 +77,7 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
     // Extract all URLs from multiline text
     const urlRegex = /https?:\/\/[^\s]+/gi;
     const urls: string[] = Array.from(url.matchAll(urlRegex)).map((match) => match[0]);
-    
+
     if (urls.length === 0) {
       const fallback: XHSDownloadResult = {
         success: false,
@@ -135,7 +135,7 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
           value={url}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>): void => setUrl(e.target.value)}
           placeholder={placeholder}
-          className="glass-input w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400/50 focus:border-red-400/50 resize-y min-h-[120px] text-theme-primary placeholder-theme-muted"
+          className="glass-input w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 resize-y min-h-[120px] text-theme-primary placeholder-theme-muted"
           disabled={loading}
           autoFocus={autoFocus}
           rows={8}
@@ -143,7 +143,7 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
         <button
           type="submit"
           disabled={loading || !url.trim()}
-          className="w-full bg-red-500/80 hover:bg-red-500 disabled:bg-gray-500/50 disabled:cursor-not-allowed text-theme-primary font-medium py-3 px-6 rounded-lg transition-all border border-red-400/50 shadow-lg"
+          className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-500/50 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-xl transition-all border border-orange-400/50 shadow-lg shadow-orange-500/20"
         >
           {loading ? "Processing…" : `${buttonText}${urlCount > 0 ? ` (${urlCount} link${urlCount !== 1 ? "s" : ""} found)` : ""}`}
         </button>

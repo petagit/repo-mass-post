@@ -14,7 +14,7 @@ export default function ProgressBar({
   progress,
   label = "Loading...",
   showPercentage = true,
-  barColor = "bg-green-500",
+  barColor = "bg-orange-500",
   height = "h-2.5",
 }: ProgressBarProps): JSX.Element {
   const clampedProgress = Math.max(0, Math.min(100, progress));

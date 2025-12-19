@@ -34,7 +34,7 @@ export default function Navbar(): JSX.Element {
           {/* Logo/Brand */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center space-x-2 group">
-              <div className="relative w-10 h-10 overflow-hidden rounded-xl border border-white/20 shadow-2xl transition-transform group-hover:scale-110">
+              <div className="relative w-10 h-10 overflow-hidden rounded-xl border border-white/20 shadow-2xl transition-all group-hover:scale-110 group-hover:shadow-orange-500/50 group-hover:border-orange-500/50">
                 <Image
                   src="/logo.png"
                   alt="Logo"
@@ -43,7 +43,7 @@ export default function Navbar(): JSX.Element {
                   priority
                 />
               </div>
-              <span className="text-xl font-bold text-theme-primary transition-all drop-shadow-lg group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
+              <span className="text-xl font-bold text-theme-primary transition-all drop-shadow-lg group-hover:text-orange-400 group-hover:drop-shadow-[0_0_8px_rgba(255,140,0,0.5)]">
                 XHS Poster
               </span>
             </Link>
@@ -73,9 +73,9 @@ export default function Navbar(): JSX.Element {
                 <Link
                   key={item.href}
                   href={item.href as any}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${isActive
-                      ? "bg-white/30 text-theme-primary shadow-lg"
-                      : "text-theme-primary/90 hover:text-theme-primary hover:bg-white/20"
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${isActive
+                    ? "bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-lg shadow-orange-500/10"
+                    : "text-theme-primary/90 hover:text-orange-400 hover:bg-orange-500/10"
                     }`}
                 >
                   {item.label}
