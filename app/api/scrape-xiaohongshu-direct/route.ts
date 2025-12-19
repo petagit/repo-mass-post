@@ -16,6 +16,13 @@ export interface XHSDownloadResult {
     accessible: boolean;
     headers?: Record<string, string>;
   };
+  perUrlResults?: {
+    url: string;
+    videoLinks: string[];
+    imageLinks: string[];
+    error?: string;
+  }[];
+  captions?: string[];
 }
 
 async function processSingleUrl(targetUrl: string): Promise<{
@@ -239,7 +246,7 @@ async function processSingleUrl(targetUrl: string): Promise<{
 export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult>> {
   try {
     const body = (await req.json()) as { url?: string; urls?: string[] };
-    
+
     // Support both single url (backward compatibility) and urls array
     let urls: string[] = [];
     if (body.urls && Array.isArray(body.urls)) {
@@ -249,7 +256,7 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
       const urlMatches = body.url.matchAll(/https?:\/\/[^\s]+/gi);
       urls = Array.from(urlMatches).map((match) => match[0]);
     }
-    
+
     if (urls.length === 0) {
       return NextResponse.json(
         { success: false, imageLinks: [], videoLinks: [], error: "No valid URLs found in input" },
@@ -268,22 +275,40 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
     let firstResolvedUrl: string | undefined;
     let firstTestedVideoUrl: string | undefined;
     let firstTestResult: XHSDownloadResult["testResult"] | undefined;
+    const perUrlResults: XHSDownloadResult["perUrlResults"] = [];
 
-    for (const result of results) {
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      const originalUrl = urls[i];
       if (result.status === "fulfilled") {
-        result.value.videoLinks.forEach((link) => allVideoLinks.add(link));
-        result.value.imageLinks.forEach((link) => allImageLinks.add(link));
-        allDebugUrls.push(...result.value.debugUrls);
-        if (!firstResolvedUrl) firstResolvedUrl = result.value.resolvedUrl;
-        if (!firstTestedVideoUrl && result.value.testedVideoUrl) {
-          firstTestedVideoUrl = result.value.testedVideoUrl;
-          firstTestResult = result.value.testResult;
+        const val = result.value;
+        perUrlResults.push({
+          url: originalUrl,
+          videoLinks: val.videoLinks,
+          imageLinks: val.imageLinks,
+          error: val.error,
+        });
+
+        val.videoLinks.forEach((link) => allVideoLinks.add(link));
+        val.imageLinks.forEach((link) => allImageLinks.add(link));
+        allDebugUrls.push(...val.debugUrls);
+        if (!firstResolvedUrl) firstResolvedUrl = val.resolvedUrl;
+        if (!firstTestedVideoUrl && val.testedVideoUrl) {
+          firstTestedVideoUrl = val.testedVideoUrl;
+          firstTestResult = val.testResult;
         }
-        if (result.value.error) {
-          errors.push(result.value.error);
+        if (val.error) {
+          errors.push(val.error);
         }
       } else {
-        errors.push(result.reason?.message || "Unknown error processing URL");
+        const errorMsg = result.reason?.message || "Unknown error processing URL";
+        perUrlResults.push({
+          url: originalUrl,
+          videoLinks: [],
+          imageLinks: [],
+          error: errorMsg,
+        });
+        errors.push(errorMsg);
       }
     }
 
@@ -292,7 +317,7 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
 
     const hasMedia = finalVideoLinks.length > 0 || finalImageLinks.length > 0;
     let errorMessage: string | undefined = undefined;
-    
+
     if (!hasMedia) {
       if (errors.length > 0) {
         errorMessage = `No media found. Errors: ${errors.join("; ")}`;
@@ -311,6 +336,7 @@ export async function POST(req: Request): Promise<NextResponse<XHSDownloadResult
       resolvedUrl: firstResolvedUrl,
       testedVideoUrl: firstTestedVideoUrl,
       testResult: firstTestResult,
+      perUrlResults,
       error: errorMessage,
     });
   } catch (e: any) {

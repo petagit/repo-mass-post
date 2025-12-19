@@ -16,6 +16,13 @@ export interface XHSDownloadResult {
     accessible: boolean;
     headers?: Record<string, string>;
   };
+  perUrlResults?: {
+    url: string;
+    videoLinks: string[];
+    imageLinks: string[];
+    error?: string;
+  }[];
+  captions?: string[];
 }
 
 export interface XHSdownloadDirectProps {
@@ -74,9 +81,21 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
     e.preventDefault();
     if (!url.trim()) return;
 
-    // Extract all URLs from multiline text
+    // Extract all URLs and captions from multiline text
     const urlRegex = /https?:\/\/[^\s]+/gi;
-    const urls: string[] = Array.from(url.matchAll(urlRegex)).map((match) => match[0]);
+    const matches = Array.from(url.matchAll(urlRegex));
+    const urls: string[] = [];
+    const parsedCaptions: string[] = [];
+    let lastIndex = 0;
+
+    for (const match of matches) {
+      urls.push(match[0]);
+      let caption = url.substring(lastIndex, match.index).trim();
+      // Remove any leading numbers or dots if they look like "1. " or "1 ("
+      caption = caption.replace(/^\d+[\s.]*/, '').trim();
+      parsedCaptions.push(caption);
+      lastIndex = match.index! + match[0].length;
+    }
 
     if (urls.length === 0) {
       const fallback: XHSDownloadResult = {
@@ -104,6 +123,23 @@ export default function XHSdownloadDirect(props: XHSdownloadDirectProps): JSX.El
         throw new Error(text.slice(0, 200));
       }
       const data: XHSDownloadResult = await response.json();
+
+      // Map captions to flat media list based on same logic as page.tsx (Prefer videos if any exist)
+      if (data.perUrlResults) {
+        const hasAnyVideos = data.videoLinks.length > 0;
+        const finalCaptions: string[] = [];
+
+        data.perUrlResults.forEach((perRes, idx) => {
+          const caption = parsedCaptions[idx] || "";
+          if (hasAnyVideos) {
+            perRes.videoLinks.forEach(() => finalCaptions.push(caption));
+          } else {
+            perRes.imageLinks.forEach(() => finalCaptions.push(caption));
+          }
+        });
+        data.captions = finalCaptions;
+      }
+
       setResult(data);
       if (onComplete) onComplete(data);
     } catch (err) {

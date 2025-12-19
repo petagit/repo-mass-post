@@ -322,6 +322,14 @@ export default function Page() {
                 setMedia(r);
                 if (r.success) {
                   toast.success(`Extracted ${r.videoLinks.length} video(s), ${r.imageLinks.length} image(s)`);
+                  // Populate individual captions if parsed captions exist
+                  if (r.captions && r.captions.length > 0) {
+                    const newCaptions = new Map<number, string>();
+                    r.captions.forEach((cap, i) => {
+                      if (cap) newCaptions.set(i, cap + "\n");
+                    });
+                    setIndividualCaptions(newCaptions);
+                  }
                 } else {
                   toast.error(r.error || "Failed to extract");
                 }
@@ -454,21 +462,40 @@ export default function Page() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <label className="block text-sm font-medium text-theme-primary/90">Bulk Caption</label>
-                      <button
-                        onClick={(): void => {
-                          // Apply bulk caption to all videos
-                          const newCaptions = new Map<number, string>();
-                          for (let i = 0; i < mediaUrls.length; i++) {
-                            newCaptions.set(i, bulkCaption);
-                          }
-                          setIndividualCaptions(newCaptions);
-                          toast.success(`Applied caption to ${mediaUrls.length} video${mediaUrls.length !== 1 ? "s" : ""}`);
-                        }}
-                        disabled={mediaUrls.length === 0}
-                        className="px-3 py-1 text-xs rounded bg-orange-500 hover:bg-orange-600 text-white border border-orange-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed transition-all shadow-md"
-                      >
-                        Apply
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(): void => {
+                            // Apply bulk caption to all videos (overwrite)
+                            const newCaptions = new Map<number, string>();
+                            for (let i = 0; i < mediaUrls.length; i++) {
+                              newCaptions.set(i, bulkCaption);
+                            }
+                            setIndividualCaptions(newCaptions);
+                            toast.success(`Applied caption to ${mediaUrls.length} video${mediaUrls.length !== 1 ? "s" : ""}`);
+                          }}
+                          disabled={mediaUrls.length === 0}
+                          className="px-3 py-1 text-xs rounded bg-orange-500 hover:bg-orange-600 text-white border border-orange-400/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed transition-all shadow-md"
+                        >
+                          Apply
+                        </button>
+                        <button
+                          onClick={(): void => {
+                            // Append bulk caption to all videos
+                            const newCaptions = new Map(individualCaptions);
+                            for (let i = 0; i < mediaUrls.length; i++) {
+                              const existing = newCaptions.get(i) || "";
+                              const separator = existing.endsWith("\n") || !existing ? "" : "\n";
+                              newCaptions.set(i, existing + separator + bulkCaption);
+                            }
+                            setIndividualCaptions(newCaptions);
+                            toast.success(`Appended caption to ${mediaUrls.length} video${mediaUrls.length !== 1 ? "s" : ""}`);
+                          }}
+                          disabled={mediaUrls.length === 0}
+                          className="px-3 py-1 text-xs rounded bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/50 disabled:bg-gray-500/50 disabled:cursor-not-allowed transition-all shadow-md"
+                        >
+                          Append
+                        </button>
+                      </div>
                     </div>
                     <textarea
                       value={bulkCaption}
