@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 interface DestinationDto {
   id: string;
-  platform: "instagram" | "x" | "pinterest";
+  platform: "instagram" | "x" | "pinterest" | "youtube" | "facebook" | "linkedin" | "tiktok";
   handle: string;
   displayName?: string;
   avatarUrl?: string;
@@ -17,7 +17,7 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json(
       {
         error: "POSTBRIDGE_API_KEY missing. Create .env.local with POSTBRIDGE_API_KEY and restart.",
-        platforms: { instagram: [], x: [], pinterest: [] },
+        platforms: { instagram: [], x: [], pinterest: [], youtube: [], facebook: [], linkedin: [], tiktok: [] },
         defaults: [],
       },
       { status: 500 }
@@ -46,13 +46,52 @@ export async function GET(): Promise<NextResponse> {
         cache: "no-store",
       });
       if (!res.ok) {
+        console.error(`API Error: ${res.status} ${res.statusText}`);
         lastErrorText = (await res.text()) || `HTTP ${res.status}`;
         continue;
       }
-      const json: any = await res.json();
-      const arr: any[] = Array.isArray(json)
+      let json: any = await res.json();
+      console.log(`Fetched from ${p}:`, JSON.stringify(json, null, 2)); // Debug log // TODO: Remove debug log later
+
+      let arr: any[] = Array.isArray(json)
         ? json
         : (json.destinations ?? json.accounts ?? json.data ?? json.items ?? []);
+
+      // Handle pagination
+      if (json.meta && json.meta.next) {
+        let nextUrl: string | null = json.meta.next;
+        while (nextUrl) {
+          // Force https to avoid 301 redirects if the API returns http links
+          if (nextUrl.startsWith("http://")) {
+            nextUrl = nextUrl.replace("http://", "https://");
+          }
+          console.log(`Fetching next page: ${nextUrl}`);
+          try {
+            const nextRes = await fetch(nextUrl, {
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Accept": "application/json",
+                "User-Agent": "PostBridge/1.0.0 (+https://api.post-bridge.com)",
+              },
+              cache: "no-store",
+            });
+            if (!nextRes.ok) {
+              console.error(`Next page error: ${nextRes.status} ${nextRes.statusText}`);
+              break;
+            }
+            const nextJson = await nextRes.json();
+            const nextArr = Array.isArray(nextJson)
+              ? nextJson
+              : (nextJson.destinations ?? nextJson.accounts ?? nextJson.data ?? nextJson.items ?? []);
+            arr = [...arr, ...nextArr];
+            nextUrl = nextJson.meta && nextJson.meta.next ? nextJson.meta.next : null;
+          } catch (e) {
+            console.error("Error fetching next page:", e);
+            break;
+          }
+        }
+      }
+
       list = arr
         .map((raw: any): DestinationDto | null => {
           const preferredId = raw.account_id ?? raw.social_account_id ?? raw.destination_id ?? raw.id ?? raw._id;
@@ -68,6 +107,14 @@ export async function GET(): Promise<NextResponse> {
             normalizedPlatform = "x";
           } else if (plat.includes("pinterest")) {
             normalizedPlatform = "pinterest";
+          } else if (plat.includes("youtube")) {
+            normalizedPlatform = "youtube";
+          } else if (plat.includes("facebook")) {
+            normalizedPlatform = "facebook";
+          } else if (plat.includes("linkedin")) {
+            normalizedPlatform = "linkedin";
+          } else if (plat.includes("tiktok")) {
+            normalizedPlatform = "tiktok";
           }
           if (!normalizedPlatform) return null;
           return {
@@ -95,6 +142,10 @@ export async function GET(): Promise<NextResponse> {
     const instagram = list.filter((d) => d.platform === "instagram");
     const x = list.filter((d) => d.platform === "x");
     const pinterest = list.filter((d) => d.platform === "pinterest");
+    const youtube = list.filter((d) => d.platform === "youtube");
+    const facebook = list.filter((d) => d.platform === "facebook");
+    const linkedin = list.filter((d) => d.platform === "linkedin");
+    const tiktok = list.filter((d) => d.platform === "tiktok");
 
     // Defaults: prefer handles from env, fall back to the first available
     const defaultIg = process.env.POSTBRIDGE_DEFAULT_IG || "costights";
@@ -106,7 +157,7 @@ export async function GET(): Promise<NextResponse> {
     const xDefault = x.find((d) => d.handle.toLowerCase() === defaultX.toLowerCase());
     if (xDefault) defaults.push(xDefault.id);
 
-    return NextResponse.json({ platforms: { instagram, x, pinterest }, defaults, error: instagram.length + x.length + pinterest.length > 0 ? undefined : lastErrorText });
+    return NextResponse.json({ platforms: { instagram, x, pinterest, youtube, facebook, linkedin, tiktok }, defaults, error: list.length > 0 ? undefined : lastErrorText });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Unexpected error" }, { status: 500 });
   }

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
-type Platform = "instagram" | "x" | "pinterest";
+type Platform = "instagram" | "x" | "pinterest" | "youtube" | "facebook" | "linkedin" | "tiktok";
 
 export interface Destination {
   id: string;
@@ -56,7 +56,15 @@ export default function PostPage(): JSX.Element {
         return;
       }
       const data = (await res.json()) as {
-        platforms: { instagram: Destination[]; x: Destination[]; pinterest?: Destination[] };
+        platforms: {
+          instagram: Destination[];
+          x: Destination[];
+          pinterest?: Destination[];
+          youtube?: Destination[];
+          facebook?: Destination[];
+          linkedin?: Destination[];
+          tiktok?: Destination[];
+        };
         defaults: string[];
         error?: string;
       };
@@ -64,8 +72,17 @@ export default function PostPage(): JSX.Element {
         ...data.platforms.instagram,
         ...data.platforms.x,
         ...(data.platforms.pinterest || []),
+        ...(data.platforms.youtube || []),
+        ...(data.platforms.facebook || []),
+        ...(data.platforms.linkedin || []),
+        ...(data.platforms.tiktok || []),
       ];
-      setDestinations(list);
+
+      // Hide specific accounts for this page only
+      const hiddenHandles = ["costights", "cosplay_tights"];
+      const filteredList = list.filter(d => !hiddenHandles.includes(d.handle.toLowerCase()));
+
+      setDestinations(filteredList);
 
       // Auto-select Instagram account "aurawell.official" and Pinterest account
       const selectedIds: string[] = [];
@@ -113,7 +130,7 @@ export default function PostPage(): JSX.Element {
         const accountNames = selectedIds
           .map((id) => {
             const acc = list.find((d) => d.id === id);
-            return acc ? `${acc.platform === "instagram" ? "IG" : acc.platform === "pinterest" ? "Pinterest" : "X"}: ${acc.handle}` : null;
+            return acc ? `${acc.platform === "instagram" ? "IG" : acc.platform === "pinterest" ? "Pinterest" : acc.platform === "youtube" ? "YT" : acc.platform === "facebook" ? "FB" : acc.platform === "linkedin" ? "LI" : acc.platform === "tiktok" ? "TT" : "X"}: ${acc.handle}` : null;
           })
           .filter(Boolean)
           .join(", ");
@@ -122,6 +139,10 @@ export default function PostPage(): JSX.Element {
         const availableAccounts = [
           ...data.platforms.instagram.map((d) => `IG: ${d.handle}`),
           ...(data.platforms.pinterest || []).map((d) => `Pinterest: ${d.handle}`),
+          ...(data.platforms.youtube || []).map((d) => `YT: ${d.handle}`),
+          ...(data.platforms.facebook || []).map((d) => `FB: ${d.handle}`),
+          ...(data.platforms.linkedin || []).map((d) => `LI: ${d.handle}`),
+          ...(data.platforms.tiktok || []).map((d) => `TT: ${d.handle}`),
         ].join(", ");
         toast.error(
           `Could not find accounts. Available: ${availableAccounts}`,
@@ -570,6 +591,114 @@ export default function PostPage(): JSX.Element {
                 <div className="flex flex-wrap gap-2">
                   {destinations
                     .filter((d) => d.platform === "pinterest")
+                    .map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={(): void => {
+                          setSelectedDestinations((prev) =>
+                            prev.includes(d.id)
+                              ? prev.filter((id) => id !== d.id)
+                              : [...prev, d.id]
+                          );
+                        }}
+                        className={`px-3 py-2 rounded-full border-2 text-sm transition-all ${selectedDestinations.includes(d.id)
+                          ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                          : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          }`}
+                      >
+                        {d.handle}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+            {destinations.some((d) => d.platform === "youtube") && (
+              <div>
+                <h3 className="text-xs font-medium text-theme-primary/90 mb-2">Youtube</h3>
+                <div className="flex flex-wrap gap-2">
+                  {destinations
+                    .filter((d) => d.platform === "youtube")
+                    .map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={(): void => {
+                          setSelectedDestinations((prev) =>
+                            prev.includes(d.id)
+                              ? prev.filter((id) => id !== d.id)
+                              : [...prev, d.id]
+                          );
+                        }}
+                        className={`px-3 py-2 rounded-full border-2 text-sm transition-all ${selectedDestinations.includes(d.id)
+                          ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                          : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          }`}
+                      >
+                        {d.handle}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+            {destinations.some((d) => d.platform === "facebook") && (
+              <div>
+                <h3 className="text-xs font-medium text-theme-primary/90 mb-2">Facebook</h3>
+                <div className="flex flex-wrap gap-2">
+                  {destinations
+                    .filter((d) => d.platform === "facebook")
+                    .map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={(): void => {
+                          setSelectedDestinations((prev) =>
+                            prev.includes(d.id)
+                              ? prev.filter((id) => id !== d.id)
+                              : [...prev, d.id]
+                          );
+                        }}
+                        className={`px-3 py-2 rounded-full border-2 text-sm transition-all ${selectedDestinations.includes(d.id)
+                          ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                          : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          }`}
+                      >
+                        {d.handle}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+            {destinations.some((d) => d.platform === "linkedin") && (
+              <div>
+                <h3 className="text-xs font-medium text-theme-primary/90 mb-2">Linkedin</h3>
+                <div className="flex flex-wrap gap-2">
+                  {destinations
+                    .filter((d) => d.platform === "linkedin")
+                    .map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={(): void => {
+                          setSelectedDestinations((prev) =>
+                            prev.includes(d.id)
+                              ? prev.filter((id) => id !== d.id)
+                              : [...prev, d.id]
+                          );
+                        }}
+                        className={`px-3 py-2 rounded-full border-2 text-sm transition-all ${selectedDestinations.includes(d.id)
+                          ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                          : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          }`}
+                      >
+                        {d.handle}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+            {destinations.some((d) => d.platform === "tiktok") && (
+              <div>
+                <h3 className="text-xs font-medium text-theme-primary/90 mb-2">Tiktok</h3>
+                <div className="flex flex-wrap gap-2">
+                  {destinations
+                    .filter((d) => d.platform === "tiktok")
                     .map((d) => (
                       <button
                         key={d.id}
