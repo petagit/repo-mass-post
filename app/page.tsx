@@ -61,6 +61,11 @@ export default function Page() {
         toast.error("Failed to load destinations", { id });
         return;
       }
+      const data = (await res.json()) as {
+        platforms: { instagram: Destination[]; x: Destination[]; pinterest?: Destination[] };
+        defaults: string[];
+        error?: string;
+      };
       const list = [
         ...data.platforms.instagram,
         ...data.platforms.x,
@@ -370,8 +375,8 @@ export default function Page() {
                         key={d.id}
                         onClick={(): void => toggle(d.id)}
                         className={`px-3 py-2 rounded-full border-2 transition-all ${selected.includes(d.id)
-                            ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
-                            : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                          : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
                           }`}
                         disabled={loadingDest}
                       >
@@ -390,8 +395,8 @@ export default function Page() {
                         key={d.id}
                         onClick={(): void => toggle(d.id)}
                         className={`px-3 py-2 rounded-full border-2 transition-all ${selected.includes(d.id)
-                            ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
-                            : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                          : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
                           }`}
                         disabled={loadingDest}
                       >
@@ -410,8 +415,8 @@ export default function Page() {
                         key={d.id}
                         onClick={(): void => toggle(d.id)}
                         className={`px-3 py-2 rounded-full border-2 transition-all ${selected.includes(d.id)
-                            ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
-                            : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
+                          ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/50 ring-2 ring-blue-500/50"
+                          : "bg-white/20 text-theme-primary/90 border-white/30 hover:bg-white/30 hover:border-white/40"
                           }`}
                         disabled={loadingDest}
                       >
