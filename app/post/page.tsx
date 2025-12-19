@@ -185,11 +185,21 @@ export default function PostPage(): JSX.Element {
     const validFiles = files.filter((file) => {
       const isImage = file.type.startsWith("image/");
       const isVideo = file.type.startsWith("video/");
+
+      if (isImage && file.size > 5 * 1024 * 1024) {
+        toast.error(`Image "${file.name}" is too large (>5MB) and will be skipped.`);
+        return false;
+      }
+
       return isImage || isVideo;
     });
 
     if (validFiles.length === 0) {
-      toast.error("Please drop only image or video files");
+      if (files.some(f => f.type.startsWith("image/") && f.size > 5 * 1024 * 1024)) {
+        // Already showed toast for large images
+        return;
+      }
+      toast.error("Please drop only image or video files (Photos must be < 5MB)");
       return;
     }
 
@@ -212,11 +222,21 @@ export default function PostPage(): JSX.Element {
     const validFiles = files.filter((file) => {
       const isImage = file.type.startsWith("image/");
       const isVideo = file.type.startsWith("video/");
+
+      if (isImage && file.size > 5 * 1024 * 1024) {
+        toast.error(`Image "${file.name}" is too large (>5MB) and will be skipped.`);
+        return false;
+      }
+
       return isImage || isVideo;
     });
 
     if (validFiles.length === 0) {
-      toast.error("Please select only image or video files");
+      if (files.some(f => f.type.startsWith("image/") && f.size > 5 * 1024 * 1024)) {
+        // Already showed toast for large images
+        return;
+      }
+      toast.error("Please select only image or video files (Photos must be < 5MB)");
       return;
     }
 
@@ -770,7 +790,8 @@ export default function PostPage(): JSX.Element {
               </span>
               <span className="text-theme-primary/80"> or drag and drop</span>
             </div>
-            <p className="text-sm text-theme-primary/70">Photos and videos (PNG, JPG, MP4, etc.)</p>
+            <p className="text-sm text-theme-primary/70">Each photo must be less than 5MB. Videos have no size limit.</p>
+            <p className="text-xs text-theme-primary/60 mt-1">If you upload a video, it will be sent as a video post to PostBridge.</p>
           </label>
         </div>
 
