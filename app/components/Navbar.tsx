@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 
+import Image from "next/image";
+
 interface NavItem {
   href: string;
   label: string;
@@ -31,8 +33,19 @@ export default function Navbar(): JSX.Element {
         <div className="flex justify-between items-center h-16">
           {/* Logo/Brand */}
           <div className="flex-shrink-0">
-            <Link href="/" className="text-xl font-semibold text-theme-primary hover:text-theme-primary/90 transition-colors drop-shadow-lg">
-              XHS Poster
+            <Link href="/" className="flex items-center space-x-2 group">
+              <div className="relative w-10 h-10 overflow-hidden rounded-xl border border-white/20 shadow-2xl transition-transform group-hover:scale-110">
+                <Image
+                  src="/logo.png"
+                  alt="Logo"
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              </div>
+              <span className="text-xl font-bold text-theme-primary transition-all drop-shadow-lg group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
+                XHS Poster
+              </span>
             </Link>
           </div>
 
@@ -41,7 +54,7 @@ export default function Navbar(): JSX.Element {
             <ThemeToggle />
             {navItems.map((item) => {
               const isActive = !item.external && pathname === item.href;
-              
+
               if (item.external) {
                 return (
                   <a
@@ -60,11 +73,10 @@ export default function Navbar(): JSX.Element {
                 <Link
                   key={item.href}
                   href={item.href as any}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-                    isActive
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${isActive
                       ? "bg-white/30 text-theme-primary shadow-lg"
                       : "text-theme-primary/90 hover:text-theme-primary hover:bg-white/20"
-                  }`}
+                    }`}
                 >
                   {item.label}
                 </Link>

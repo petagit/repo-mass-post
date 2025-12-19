@@ -100,7 +100,7 @@ export async function GET(): Promise<NextResponse> {
           const handleRaw: string | undefined = raw.handle || raw.username || raw.name || raw.screen_name;
           if (!id || !platformRaw || !handleRaw) return null;
           const plat = platformRaw.toLowerCase();
-          let normalizedPlatform: "instagram" | "x" | "pinterest" | undefined;
+          let normalizedPlatform: "instagram" | "x" | "pinterest" | "youtube" | "facebook" | "linkedin" | "tiktok" | undefined;
           if (plat.includes("insta")) {
             normalizedPlatform = "instagram";
           } else if (plat.includes("twitter") || plat === "x") {

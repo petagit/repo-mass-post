@@ -7,6 +7,11 @@ import { ThemeProvider } from "./components/ThemeProvider";
 export const metadata: Metadata = {
   title: "XHS → Post-Bridge Poster",
   description: "Extract media from Xiaohongshu and post via Post-Bridge",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
